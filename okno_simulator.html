@@ -290,6 +290,7 @@
         </div>
         <div class="coordinates" id="coord-display">X: 0, Z: 0</div>
         <div class="cross-marker" id="cross-marker"></div>
+        <div id="debug-display" style="position: fixed; top: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 5px; font-size: 12px; display: none;"></div>
     </div>
 
     <div class="playback-controls" id="playback-controls">
@@ -320,6 +321,7 @@
         const ctx = canvas.getContext('2d');
         const coordDisplay = document.getElementById('coord-display');
         const crossMarker = document.getElementById('cross-marker');
+        const debugDisplay = document.getElementById('debug-display');
 
         // Výchozí nastavení pro mřížku
         let scale = 40; // Počet pixelů na jednotku
@@ -617,7 +619,11 @@
             // Zaokrouhlit na 3 desetinná místa a pak zobrazit
             const gridX = parseFloat(rawX.toFixed(3)).toString();
             const gridY = parseFloat(rawY.toFixed(3)).toString();
-            coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+            
+            // Zobrazit souřadnice pouze pokud není aktivní křížek
+            if (!isHolding) {
+                coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+            }
 
             if (isDragging) {
                 // Pokud se uživatel pohybuje, zrušit odpočet pro podržení
@@ -675,7 +681,11 @@
                 const rawY = -(touch.clientY - offsetY) / scale;
                 const gridX = parseFloat(rawX.toFixed(3)).toString();
                 const gridY = parseFloat(rawY.toFixed(3)).toString();
-                coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+                
+                // Zobrazit souřadnice pouze pokud není aktivní křížek
+                if (!isHolding) {
+                    coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+                }
                 
                 if (isDragging) {
                     if (isHolding) {
@@ -734,16 +744,37 @@
         }
         
         function updateCrossMarkerPosition(x, y) {
-            // Větší offset pro mobilní zařízení
-            let offsetY = 150; // Výrazně větší offset pro mobilní zařízení
+            // Použít stejný offset 80px pro všechna zařízení
+            const markerOffsetY = 80;
             
-            // Pro desktop můžeme použít menší offset
-            if (window.innerWidth > 768) {
-                offsetY = 80;
-            }
+            // Aktualizovat pozici křížku - křížek je jen vizuální pomůcka
+            // a je posunutý nad prst/myš
+            const markerX = x;
+            const markerY = y - markerOffsetY;
+            crossMarker.style.left = `${markerX}px`;
+            crossMarker.style.top = `${markerY}px`;
             
-            crossMarker.style.left = `${x}px`;
-            crossMarker.style.top = `${y - offsetY}px`;
+            // Výpočet souřadnic PRO POZICI KŘÍŽKU (ne pro pozici myši/prstu)
+            const rawX = (markerX - offsetX) / scale;
+            const rawY = -(markerY - offsetY) / scale;
+            
+            // Zaokrouhlit na 3 desetinná místa a pak zobrazit
+            const gridX = parseFloat(rawX.toFixed(3)).toString();
+            const gridY = parseFloat(rawY.toFixed(3)).toString();
+            
+            // Aktualizovat zobrazení souřadnic - použít souřadnice křížku
+            coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+            
+            // Pro účely ladění
+            debugDisplay.style.display = 'none';
+            // debugDisplay.innerHTML = `
+            //     Pozice myši/prstu: x=${x}, y=${y}<br>
+            //     Pozice křížku: x=${markerX}, y=${markerY}<br>
+            //     Offset: offsetX=${offsetX}, offsetY=${offsetY}<br>
+            //     Scale: ${scale}<br>
+            //     Výpočet X: (${markerX} - ${offsetX}) / ${scale} = ${gridX}<br>
+            //     Výpočet Z: -(${markerY} - ${offsetY}) / ${scale} = ${gridY}
+            // `;
         }
 
         // Ovládání vysouvacího panelu
