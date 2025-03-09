@@ -3,851 +3,643 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Interaktivní kartézská mřížka</title>
+    <title>CNC Parser a Editor</title>
     <style>
-        body {
+        * {
             margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-            touch-action: manipulation; /* Zabraňuje výchozímu chování prohlížeče při dotycích */
+            padding: 0;
+            box-sizing: border-box;
         }
-        #canvas-container {
-            position: relative;
-            width: 100vw;
+
+        body {
             height: 100vh;
-            background-color: #f0f0f0;
             overflow: hidden;
-            transition: transform 0.3s ease-in-out;
+            touch-action: none;
+            font-family: Arial, sans-serif;
         }
-        #canvas-container.panel-open {
-            transform: translateY(calc(-1 * var(--panel-height, 50vh)));
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f3f4f6;
         }
-        canvas {
+
+        .editor {
+            background-color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .editor-label {
             position: absolute;
             top: 0;
-            left: 0;
-            touch-action: none; /* Zakáže základní dotykové chování, abychom mohli implementovat vlastní */
-        }
-        .controls {
-            position: fixed;
-            bottom: 60px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 5px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-            z-index: 1002;
-            transition: transform 0.3s ease-in-out;
+            right: 8px;
+            padding: 4px 8px 8px;
+            background-color: #e5e7eb;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #374151;
+            z-index: 10;
+            cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
-        .controls.panel-open {
-            transform: translateY(calc(-1 * var(--panel-height, 50vh) + 240px));
-        }
-        .controls button {
-            margin: 2px;
-            width: 40px;
-            height: 30px;
-            line-height: 1;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-        .coordinates {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 8px 12px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            font-size: 14px; /* Větší text pro lepší čitelnost na mobilních zařízeních */
-            z-index: 1000;
-        }
-        @media (max-width: 768px) {
-            .controls {
-                padding: 8px;
-            }
-            button {
-                padding: 12px 16px; /* Ještě větší tlačítka na malých obrazovkách */
-                margin: 4px;
-            }
-            .coordinates {
-                font-size: 16px; /* Větší text na mobilních zařízeních */
-            }
+            min-width: 60px;
         }
 
-        /* Styly pro vysouvací panel */
-        .sliding-panel {
-            position: fixed;
-            bottom: -50vh; /* Změněno z pevné hodnoty na relativní */
-            left: 0;
-            width: 100%; /* Panel přes celou šířku */
-            height: 50vh; /* Výchozí výška je 50% výšky obrazovky */
-            background-color: white;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+        .editor-label::after {
+            content: '';
+            margin-top: 8px;
+            width: 24px;
+            height: 4px;
+            background-color: #6b7280;
+            border-radius: 9999px;
+            box-shadow: 0 6px 0 #6b7280;
+        }
+
+        .editor-label:hover {
+            background-color: #d1d5db;
+        }
+
+        .editor textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            border: 1px solid #d1d5db;
+            padding: 1.5rem 1rem 1rem;
+            font-size: 1rem;
+            font-family: monospace;
+        }
+
+        #topEditor {
+            position: relative;
+            z-index: 1;
+        }
+
+        #bottomEditor {
+            position: relative;
+            z-index: 1001;
+            transform: translateY(0);
             transition: transform 0.3s ease-in-out;
-            z-index: 1000;
         }
 
-        .sliding-panel.open {
+        #bottomEditor.open {
             transform: translateY(-100%);
         }
 
-        .panel-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background-color: #007bff;
+        .middle-window {
+            background-color: #e5e7eb;
+            position: relative;
+            overflow: hidden;
+            transition: height 0.3s ease-in-out;
+            border-top: 1px solid #d1d5db;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .middle-content {
+            height: 100%;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            transition: opacity 0.3s;
+        }
+
+        .middle-content.hidden {
+            opacity: 0;
+        }
+
+        .square-button {
+            width: 45px;
+            height: 45px;
+            background-color: #64748b;
             color: white;
             border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 1001;
-            transition: transform 0.3s ease-in-out;
-        }
-
-        .panel-toggle.panel-open {
-            transform: translateY(calc(-1 * var(--panel-height, 50vh)));
-        }
-
-        .panel-content {
-            padding: 30px 20px 20px 20px; /* Zvětšit horní padding pro táhlo */
-            height: calc(100% - 50px);
-            overflow-y: auto;
-        }
-
-        /* Přidat táhlo pro resize */
-        .panel-handle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: #f0f0f0;
-            cursor: row-resize;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 1px solid #ddd;
-        }
-
-        /* Vizuální indikátor pro táhlo */
-        .panel-handle::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 50px;
-            height: 4px;
-            background: #ccc;
             border-radius: 4px;
-        }
-
-        /* Přizpůsobení pro mobilní zařízení */
-        @media (max-width: 768px) {
-            .sliding-panel {
-                width: 100%;
-                right: 0;
-            }
-        }
-
-        /* Přidat nový styl pro playback controls */
-        .playback-controls {
-            position: fixed;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.7); /* Zvýšená průhlednost */
-            padding: 8px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(5px); /* Rozmazané pozadí */
-            -webkit-backdrop-filter: blur(5px); /* Pro Safari */
-            z-index: 1002;
-            display: flex;
-            gap: 8px;
-            transition: transform 0.3s ease-in-out;
-        }
-
-        .playback-controls.panel-open {
-            transform: translate(-50%, calc(-1 * var(--panel-height, 50vh)));
-        }
-
-        .playback-controls button {
-            width: 36px;
-            height: 36px;
-            border-radius: 5px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            background-color: rgba(255, 255, 255, 0.8);
-            cursor: pointer;
-            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0;
-        }
-
-        .playback-controls button:hover {
-            background-color: #f0f0f0;
-        }
-
-        .playback-controls .speed-controls {
-            display: flex;
-            gap: 4px;
-            margin-left: 12px;
-            padding-left: 12px;
-            border-left: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .playback-speed {
             font-size: 14px;
-            line-height: 36px;
-            margin: 0 8px;
-            white-space: nowrap;
-            color: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            margin: 0 10px;
         }
 
-        /* Optimalizace pro mobilní zařízení */
-        @media (max-width: 768px) {
-            .playback-controls {
-                bottom: 60px;
-                padding: 6px;
-                gap: 4px;
-                width: 90%; /* Omezení šířky na mobilech */
-                max-width: 400px; /* Maximální šířka */
-            }
-
-            .playback-controls button {
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
-            }
-
-            .playback-controls .speed-controls {
-                margin-left: 8px;
-                padding-left: 8px;
-            }
-
-            .playback-speed {
-                font-size: 12px;
-                line-height: 32px;
-                margin: 0 4px;
-            }
+        .square-button:hover {
+            background-color: #475569;
         }
 
-        /* Orientace na šířku pro mobilní zařízení */
-        @media (max-height: 500px) {
-            .playback-controls {
-                bottom: auto;
-                top: 10px;
-            }
+        .file-icon {
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 auto;
+            background-color: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px dashed #d1d5db;
         }
 
-        /* Styl pro křížek při podržení */
-        .cross-marker {
-            position: absolute;
-            pointer-events: none; /* Aby křížek nebránil interakci s canvasem */
-            z-index: 1005;
+        .file-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #374151;
+        }
+
+        .file-icon:hover {
+            background-color: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
+        .file-icon:hover svg {
+            color: #1f2937;
+        }
+
+        .file-icon span {
+            font-size: 12px;
+            margin-top: 5px;
+            text-align: center;
+            color: #374151;
+        }
+
+        .file-input {
             display: none;
-            transform: translate(-50%, -50%); /* Vycentrování křížku */
         }
-        
-        .cross-marker::before,
-        .cross-marker::after {
-            content: '';
+
+        .side-panel {
+            position: fixed;
+            top: 0;
+            height: 100vh;
+            width: 300px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1001;
+        }
+
+        .left-panel {
+            left: 0;
+            transform: translateX(-100%);
+        }
+
+        .right-panel {
+            right: 0;
+            transform: translateX(100%);
+        }
+
+        .side-panel.open {
+            transform: translateX(0);
+        }
+
+        .close-button {
             position: absolute;
-            background-color: rgba(255, 0, 0, 0.8);
+            top: 10px;
+            width: 30px;
+            height: 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            right: 10px;  /* Změna pozice křížku */
         }
-        
-        .cross-marker::before {
-            width: 20px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+
+        .left-panel .close-button {
+            right: 10px;
         }
-        
-        .cross-marker::after {
-            width: 2px;
-            height: 20px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+
+        .right-panel .close-button {
+            left: 10px;
+        }
+
+        .top-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1001;
+            padding: 0;
+            min-height: 45px; /* Minimální výška pro zobrazení ovládacích prvků */
+        }
+
+        .top-panel.open {
+            transform: translateY(0);
+        }
+
+        .program-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 5px 10px;
+            overflow-y: visible;
+            flex: 1;
+            height: 45px;
+            align-items: center;
+        }
+
+        .program-item {
+            height: 35px;
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .program-item:hover {
+            background-color: #e5e7eb;
+        }
+
+        .top-panel-controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 5px 15px;
+            height: 45px;
+            gap: 15px;  /* Mezera mezi ikonami */
+            border-left: 1px solid #e5e7eb;
+            background-color: white;
+        }
+
+        .freeze-button {
+            width: 35px;
+            height: 35px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;          /* Odstranění margin */
+            position: relative; /* Přidáno pro konzistenci */
+        }
+
+        .close-button {
+            position: relative;  /* Změna z absolute na relative */
+            top: auto;          /* Odstranění absolute pozicování */
+            right: auto;        /* Odstranění absolute pozicování */
+            width: 35px;
+            height: 35px;
+            font-size: 28px;
+        }
+
+        .freeze-button svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .close-button {
+            width: 35px;
+            height: 35px;
+            font-size: 28px; /* Větší křížek */
+        }
+
+        /* Odstraníme margin-right, protože používáme gap v parent elementu */
+        .freeze-button {
+            margin-right: 0;
+        }
+
+        .freeze-button span {
+            display: none; /* Skryjeme text */
+        }
+
+        .freeze-button.active {
+            color: #2563eb;
+        }
+
+        .program-item.active {
+            background-color: #60a5fa;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .program-item.active:hover {
+            background-color: #3b82f6;
+        }
+
+        /* Přidat nový wrapper pro flex layout */
+        .top-panel-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 45px;
         }
     </style>
 </head>
 <body>
-    <div id="canvas-container">
-        <canvas id="grid-canvas"></canvas>
-        <div class="controls">
-            <button id="zoom-in">+</button>
-            <button id="zoom-out">−</button>
-            <button id="reset" title="Reset zobrazení">↺</button>
+    <div class="container">
+        <div id="topPanel" class="top-panel">
+            <div class="top-panel-wrapper">
+                <div id="programList" class="program-list">
+                    <!-- Programy budou dynamicky přidány zde -->
+                </div>
+                <div class="top-panel-controls">
+                    <button id="freezeButton" class="freeze-button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5l-5-3-5 3M17 19l-5 3-5-3M2 12h20M5 17l3-5-3-5M19 17l-3-5 3-5"/>
+                        </svg>
+                    </button>
+                    <button class="close-button" onclick="toggleTopPanel()">×</button>
+                </div>
+            </div>
         </div>
-        <div class="coordinates" id="coord-display">X: 0, Z: 0</div>
-        <div class="cross-marker" id="cross-marker"></div>
+
+        <div id="topEditor" class="editor">
+            <iframe src="./okno_simulator.html" style="width: 100%; height: 100%; border: none;" id="simulatorFrame"></iframe>
+        </div>
+
+        <div id="middleWindow" class="middle-window">
+            <div class="middle-content">
+                <button id="lpButton" class="square-button">LP</button>
+                <div class="file-icon" onclick="document.getElementById('fileInput').click()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                </div>
+                <button id="ppButton" class="square-button">PP</button>
+                <input type="file" id="fileInput" class="file-input" accept=".mpf,.spf,.nc,.cnc" multiple />
+            </div>
+        </div>
+
+        <div id="bottomEditor" class="editor">
+            <div class="editor-label" id="editorHandle">Menu</div>
+            <textarea placeholder="Editor CNC kód..."></textarea>
+        </div>
     </div>
 
-    <div class="playback-controls" id="playback-controls">
-        <button id="step-backward" title="Krok vzad">⏮</button>
-        <button id="play-pause" title="Přehrát/Pozastavit">▶</button>
-        <button id="step-forward" title="Krok vpřed">⏭</button>
-        <button id="stop" title="Stop">⏹</button>
-        <div class="speed-controls">
-            <button id="speed-down" title="Snížit rychlost">−</button>
-            <span class="playback-speed" id="speed-display">1×</span>
-            <button id="speed-up" title="Zvýšit rychlost">+</button>
-            <button id="speed-reset" title="Resetovat rychlost">↺</button>
-        </div>
+    <div id="leftPanel" class="side-panel left-panel">
+        <button class="close-button" onclick="toggleLeftPanel()">×</button>
     </div>
 
-    <button class="panel-toggle" id="panel-toggle">Panel</button>
-    <div class="sliding-panel" id="sliding-panel">
-        <div class="panel-handle" id="panel-handle"></div>
-        <div class="panel-content">
-            <h2>Informační Panel</h2>
-            <p>Zde můžete přidat libovolný obsah...</p>
-        </div>
+    <div id="rightPanel" class="side-panel right-panel">
+        <button class="close-button" onclick="toggleRightPanel()">×</button>
     </div>
 
     <script>
-        // Základní nastavení
-        const canvas = document.getElementById('grid-canvas');
-        const ctx = canvas.getContext('2d');
-        const coordDisplay = document.getElementById('coord-display');
-        const crossMarker = document.getElementById('cross-marker');
+        const container = document.querySelector('.container');
+        const topEditor = document.getElementById('topEditor');
+        const middleWindow = document.getElementById('middleWindow');
+        const bottomEditor = document.getElementById('bottomEditor');
+        const middleContent = document.querySelector('.middle-content');
+        const fileInput = document.getElementById('fileInput');
+        const parserTextarea = topEditor.querySelector('textarea');
+        const editorTextarea = bottomEditor.querySelector('textarea');
 
-        // Výchozí nastavení pro mřížku
-        let scale = 40; // Počet pixelů na jednotku
-        let offsetX = 0; // Posun ve směru X
-        let offsetY = 0; // Posun ve směru Y
+        const leftPanel = document.getElementById('leftPanel');
+        const rightPanel = document.getElementById('rightPanel');
+        const lpButton = document.getElementById('lpButton');
+        const ppButton = document.getElementById('ppButton');
+        const topPanel = document.getElementById('topPanel');
+        const editorHandle = document.getElementById('editorHandle');
+
+        let isMiddleOpen = false;
         let isDragging = false;
-        let lastX, lastY;
-        let minGridSpacing = 30; // Minimální mezera mezi čarami mřížky v pixelech
-        
-        // Proměnné pro sledování stavu podržení
-        let isHolding = false;
-        let holdTimer = null;
-        let holdDuration = 300; // Doba v ms, po kterou musí být tlačítko/dotek podržen
+        let startY, startTopHeight, startBottomHeight;
 
-        // Nastavení velikosti canvasu podle okna
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            drawGrid();
+        const MIDDLE_HEIGHT = 10;
+        let topHeight = 95;
+        let bottomHeight = 5;
+
+        let originalTopHeight;
+        let originalBottomHeight;
+
+        function updateHeights() {
+            const middleHeight = isMiddleOpen ? MIDDLE_HEIGHT : 1;
+            topEditor.style.height = `${topHeight}vh`;
+            middleWindow.style.height = `${middleHeight}vh`;
+            bottomEditor.style.height = `${bottomHeight}vh`;
+            middleContent.classList.toggle('hidden', !isMiddleOpen);
         }
 
-        // Inicializace po načtení stránky
-        window.addEventListener('load', () => {
-            resizeCanvas();
-
-            // Nastavení počáteční pozice a měřítka pro zobrazení rozsahu 0-700 na vodorovné ose
-            const targetRightX = 700;
-            scale = canvas.width / targetRightX; // Měřítko, aby se zobrazil rozsah 0-700
-
-            // Umístit počátek souřadnic do levého dolního rohu s offsetem
-            offsetX = 50;  // 50px od levého okraje
-            offsetY = canvas.height - 50;  // 50px od dolního okraje
-
-            drawGrid();
+        // Přidáme ResizeObserver pro lepší aktualizaci pozice
+        const resizeObserver = new ResizeObserver(() => {
+            requestAnimationFrame(updateHeights);
         });
 
-        // Reagovat na změnu velikosti okna
-        window.addEventListener('resize', resizeCanvas);
+        resizeObserver.observe(bottomEditor);
+        resizeObserver.observe(topEditor);
 
-        // Funkce pro vykreslení mřížky
-        function drawGrid() {
-            // Vyčistit canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        editorHandle.addEventListener('click', (e) => {
+            if (isDragging) return;
 
-            // Určit, zda je viditelný středový kříž
-            const isOriginXVisible = offsetX > 0 && offsetX < canvas.width;
-            const isOriginYVisible = offsetY > 0 && offsetY < canvas.height;
-            const isOriginVisible = isOriginXVisible && isOriginYVisible;
+            e.stopPropagation();
+            isMiddleOpen = !isMiddleOpen;
 
-            // Vypočítat viditelnou oblast v souřadnicích mřížky
-            const viewportLeft = -offsetX / scale;
-            const viewportRight = (canvas.width - offsetX) / scale;
-            const viewportTop = -offsetY / scale;
-            const viewportBottom = (canvas.height - offsetY) / scale;
-
-            // Určit vhodný interval mřížky na základě přiblížení
-            const gridInterval = determineGridInterval(scale);
-
-            // Vypočítat počáteční a koncové pozice čar
-            const startX = Math.floor(viewportLeft / gridInterval) * gridInterval;
-            const endX = Math.ceil(viewportRight / gridInterval) * gridInterval;
-            const startY = Math.floor(viewportTop / gridInterval) * gridInterval;
-            const endY = Math.ceil(viewportBottom / gridInterval) * gridInterval;
-
-            // Vykreslit osy (silnější středový kříž)
-            if (isOriginXVisible || isOriginYVisible) {
-                // Tloušťka středového kříže je větší
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#000000';
-                ctx.beginPath();
-
-                // Osa X
-                if (isOriginYVisible) {
-                    ctx.moveTo(0, offsetY);
-                    ctx.lineTo(canvas.width, offsetY);
-                }
-
-                // Osa Y
-                if (isOriginXVisible) {
-                    ctx.moveTo(offsetX, 0);
-                    ctx.lineTo(offsetX, canvas.height);
-                }
-
-                ctx.stroke();
-            }
-
-            // Vykreslit mřížku (běžné čáry)
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = '#aaaaaa';
-            ctx.beginPath();
-
-            // Vertikální čáry
-            for (let x = startX; x <= endX; x += gridInterval) {
-                if (x === 0) continue; // Přeskočit osu Y, ta už je vykreslena výše
-                const pixelX = offsetX + x * scale;
-                ctx.moveTo(pixelX, 0);
-                ctx.lineTo(pixelX, canvas.height);
-            }
-
-            // Horizontální čáry
-            for (let y = startY; y <= endY; y += gridInterval) {
-                if (y === 0) continue; // Přeskočit osu X, ta už je vykreslena výše
-                const pixelY = offsetY + y * scale;
-                ctx.moveTo(0, pixelY);
-                ctx.lineTo(canvas.width, pixelY);
-            }
-
-            ctx.stroke();
-
-            // Nastavení písma pro běžné hodnoty
-            ctx.font = '12px Arial';
-            ctx.fillStyle = '#333333';
-
-            // Najít pozici druhé mřížky od každého okraje (místo třetí)
-            const secondGridLeft = startX + 2 * gridInterval;
-            const secondGridRight = endX - 2 * gridInterval;
-            const secondGridTop = startY + 2 * gridInterval;
-            const secondGridBottom = endY - 2 * gridInterval;
-
-            // Pozice druhé mřížky v pixelech
-            const secondPixelLeft = offsetX + secondGridLeft * scale;
-            const secondPixelRight = offsetX + secondGridRight * scale;
-            const secondPixelTop = offsetY + secondGridTop * scale;
-            const secondPixelBottom = offsetY + secondGridBottom * scale;
-
-            // Vykreslit hodnoty na mřížce
-            // Vertikální čáry - hodnoty X
-            for (let x = startX; x <= endX; x += gridInterval) {
-                if (x === 0) continue; // Hodnotu pro 0 vykreslíme zvlášť
-                const pixelX = offsetX + x * scale;
-                const formattedX = parseFloat(x.toFixed(3)).toString();
-
-                // Rozhodnutí, kde vykreslit hodnotu X
-                if (isOriginYVisible) {
-                    // Pokud je viditelná osa X, vykresli hodnotu na ose
-                    ctx.fillText(formattedX, pixelX + 5, offsetY + 15);
-                } else if (offsetY > canvas.height / 2) {
-                    // Střed je pod dolní polovinou - vykresli blíže ke středu, tedy nahoře
-                    ctx.fillText(formattedX, pixelX + 5, canvas.height - secondPixelTop + 15);
-                } else {
-                    // Střed je nad horní polovinou - vykresli blíže ke středu, tedy dole
-                    ctx.fillText(formattedX, pixelX + 5, secondPixelBottom - 15);
-                }
-            }
-
-            // Horizontální čáry - hodnoty Z
-            for (let y = startY; y <= endY; y += gridInterval) {
-                if (y === 0) continue; // Hodnotu pro 0 vykreslíme zvlášť
-                const pixelY = offsetY + y * scale;
-                const formattedY = parseFloat((-y).toFixed(3)).toString();
-
-                // Rozhodnutí, kde vykreslit hodnotu Z
-                if (isOriginXVisible) {
-                    // Pokud je viditelná osa Y, vykresli hodnotu na ose
-                    ctx.fillText(formattedY, offsetX + 5, pixelY + 15);
-                } else if (offsetX > canvas.width / 2) {
-                    // Střed je vpravo od plátna - vykresli blíže ke středu, tedy vpravo
-                    // Použijeme pevný offset od pravého okraje pro konzistentnější zobrazení
-                    ctx.fillText(formattedY, canvas.width - 50, pixelY + 15);
-                } else {
-                    // Střed je vlevo od plátna - vykresli blíže ke středu, tedy vlevo
-                    // Použijeme pevný offset od levého okraje pro konzistentnější zobrazení
-                    ctx.fillText(formattedY, 50, pixelY + 15);
-                }
-            }
-
-            // Vykreslit počátek souřadnic s většími popisky
-            if (isOriginVisible) {
-                // Červený bod v počátku
-                ctx.fillStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.arc(offsetX, offsetY, 4, 0, 2 * Math.PI); // Větší bod
-                ctx.fill();
-
-                // Větší písmo pro hodnotu 0
-                ctx.font = '14px Arial';
-                ctx.fillStyle = '#000000'; // Tmavší barva pro lepší viditelnost
-                ctx.fillText('0', offsetX + 6, offsetY + 16);
-            }
-
-            // Zobrazit referenční hodnoty na okrajích, pokud není vidět středový kříž
-            if (!isOriginVisible) {
-                ctx.font = '12px Arial';
-                ctx.fillStyle = '#333333';
-
-                // Referenční hodnoty pro viditelnou oblast
-                const leftEdgeValue = parseFloat(viewportLeft.toFixed(3)).toString();
-                const rightEdgeValue = parseFloat(viewportRight.toFixed(3)).toString();
-                const topEdgeValue = parseFloat((-viewportTop).toFixed(3)).toString();
-                const bottomEdgeValue = parseFloat((-viewportBottom).toFixed(3)).toString();
-
-                // Zobrazit hodnoty na okrajích
-                ctx.fillText(`X: ${leftEdgeValue}`, 10, canvas.height - 10);
-                ctx.fillText(`X: ${rightEdgeValue}`, canvas.width - 80, canvas.height - 10);
-                ctx.fillText(`Z: ${topEdgeValue}`, canvas.width - 80, 20);
-                ctx.fillText(`Z: ${bottomEdgeValue}`, canvas.width - 80, canvas.height - 30);
-            }
-        }
-
-        // Funkce pro určení vhodného intervalu mřížky
-        function determineGridInterval(scale) {
-            // Základ pro intervaly (mocniny 10)
-            const base = 10;
-
-            // Základní interval je 1
-            let interval = 1;
-
-            // Pokud jsme příliš přiblíženi, zmenšujeme interval
-            while (interval * scale > minGridSpacing * 2) {
-                interval /= base;
-            }
-
-            // Pokud jsme příliš oddáleni, zvětšujeme interval
-            while (interval * scale < minGridSpacing) {
-                interval *= base;
-            }
-
-            // Pro lepší vzhled můžeme přidat mezihodnoty (2, 5)
-            const refinedIntervals = [1, 2, 5, 10];
-            let magnitude = Math.pow(10, Math.floor(Math.log10(interval)));
-
-            for (let i = 0; i < refinedIntervals.length; i++) {
-                let refined = refinedIntervals[i] * magnitude;
-                if (refined * scale >= minGridSpacing) {
-                    return refined;
-                }
-            }
-
-            return interval;
-        }
-
-        // Ovládání pro zoom a posun
-        document.getElementById('zoom-in').addEventListener('click', () => {
-            scale *= 1.2;
-            drawGrid();
-        });
-
-        document.getElementById('zoom-out').addEventListener('click', () => {
-            scale /= 1.2;
-            drawGrid();
-        });
-
-        document.getElementById('reset').addEventListener('click', () => {
-            // Nastavení měřítka pro zobrazení rozsahu 0-700 na vodorovné ose
-            const targetRightX = 700;
-            scale = canvas.width / targetRightX;
-
-            // Resetovat do levého dolního rohu (místo do středu)
-            offsetX = 50;
-            offsetY = canvas.height - 50;
-            drawGrid();
-        });
-
-        // Událost pro kolečko myši - zoom
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-
-            // Získat souřadnice myši před zoomem
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-
-            // Vypočítat souřadnice v mřížce
-            const gridX = (mouseX - offsetX) / scale;
-            const gridY = (mouseY - offsetY) / scale;
-
-            // Upravit měřítko podle směru kolečka
-            if (e.deltaY < 0) {
-                scale *= 1.1; // Přiblížit
+            if (isMiddleOpen) {
+                const availableSpace = 100 - MIDDLE_HEIGHT;
+                const ratio = topHeight / (topHeight + bottomHeight);
+                topHeight = availableSpace * ratio;
+                bottomHeight = availableSpace * (1 - ratio);
             } else {
-                scale /= 1.1; // Oddálit
+                const ratio = topHeight / (topHeight + bottomHeight);
+                topHeight = 99 * ratio;
+                bottomHeight = 99 * (1 - ratio);
             }
 
-            // Upravit posun, aby bod pod kurzorem zůstal na stejném místě
-            offsetX = mouseX - gridX * scale;
-            offsetY = mouseY - gridY * scale;
-
-            drawGrid();
+            updateHeights();
         });
 
-        // Události pro tažení myší
-        canvas.addEventListener('mousedown', (e) => {
+        editorHandle.addEventListener('touchstart', (e) => {
             isDragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-            canvas.style.cursor = 'grabbing';
-            
-            // Začít odpočet pro podržení
-            startHoldTimer(e.clientX, e.clientY);
+            startY = e.touches[0].clientY;
+            startTopHeight = topHeight;
+            startBottomHeight = bottomHeight;
         });
 
-        canvas.addEventListener('mousemove', (e) => {
-            // Aktualizovat zobrazení souřadnic a opravit nepřesnosti plovoucí desetinné čárky
-            const rawX = (e.clientX - offsetX) / scale;
-            const rawY = -(e.clientY - offsetY) / scale;
-            // Zaokrouhlit na 3 desetinná místa a pak zobrazit
-            const gridX = parseFloat(rawX.toFixed(3)).toString();
-            const gridY = parseFloat(rawY.toFixed(3)).toString();
-            coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
 
-            if (isDragging) {
-                // Pokud se uživatel pohybuje, zrušit odpočet pro podržení
-                clearHoldTimer();
-                
-                // Pokud je zobrazen křížek a uživatel se pohybuje, aktualizovat jeho pozici
-                if (isHolding) {
-                    updateCrossMarkerPosition(e.clientX, e.clientY);
-                } else {
-                    // Standardní posun plátna
-                    offsetX += e.clientX - lastX;
-                    offsetY += e.clientY - lastY;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    drawGrid();
-                }
+            const touch = e.touches[0];
+            const deltaY = touch.clientY - startY;
+            const deltaPercent = (deltaY / window.innerHeight) * 100;
+
+            const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
+            const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+            const newBottomHeight = availableSpace - newTopHeight;
+
+            if (newBottomHeight >= 20) {
+                topHeight = newTopHeight;
+                bottomHeight = newBottomHeight;
+                updateHeights();
             }
-        });
+        }, { passive: false });
 
-        canvas.addEventListener('mouseup', () => {
+        document.addEventListener('touchend', () => {
             isDragging = false;
-            canvas.style.cursor = 'default';
-            clearHoldTimer();
-            hideCrossMarker();
         });
 
-        canvas.addEventListener('mouseleave', () => {
-            isDragging = false;
-            canvas.style.cursor = 'default';
-            clearHoldTimer();
-            hideCrossMarker();
-        });
-        
-        // Přidat události pro dotykové ovládání
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Zabránit výchozímu chování prohlížeče
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                isDragging = true;
-                lastX = touch.clientX;
-                lastY = touch.clientY;
-                
-                // Začít odpočet pro podržení
-                startHoldTimer(touch.clientX, touch.clientY);
-            }
-        });
-        
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Zabránit výchozímu chování prohlížeče
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                
-                // Aktualizovat zobrazení souřadnic
-                const rawX = (touch.clientX - offsetX) / scale;
-                const rawY = -(touch.clientY - offsetY) / scale;
-                const gridX = parseFloat(rawX.toFixed(3)).toString();
-                const gridY = parseFloat(rawY.toFixed(3)).toString();
-                coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
-                
-                if (isDragging) {
-                    if (isHolding) {
-                        // Pokud je aktivní podržení, aktualizovat pozici křížku
-                        updateCrossMarkerPosition(touch.clientX, touch.clientY);
-                    } else {
-                        // Jinak standardní posun plátna
-                        clearHoldTimer();
-                        offsetX += touch.clientX - lastX;
-                        offsetY += touch.clientY - lastY;
-                        lastX = touch.clientX;
-                        lastY = touch.clientY;
-                        drawGrid();
-                    }
-                }
-            }
-        });
-        
-        canvas.addEventListener('touchend', () => {
-            isDragging = false;
-            clearHoldTimer();
-            hideCrossMarker();
-        });
-        
-        canvas.addEventListener('touchcancel', () => {
-            isDragging = false;
-            clearHoldTimer();
-            hideCrossMarker();
-        });
-        
-        // Funkce pro práci s křížkem při podržení
-        function startHoldTimer(x, y) {
-            clearHoldTimer(); // Vyčistit existující časovač
-            
-            holdTimer = setTimeout(() => {
-                isHolding = true;
-                showCrossMarker(x, y);
-            }, holdDuration);
-        }
-        
-        function clearHoldTimer() {
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
-            }
-        }
-        
-        function showCrossMarker(x, y) {
-            crossMarker.style.display = 'block';
-            updateCrossMarkerPosition(x, y);
-        }
-        
-        function hideCrossMarker() {
-            isHolding = false;
-            crossMarker.style.display = 'none';
-        }
-        
-        function updateCrossMarkerPosition(x, y) {
-            // Přidat offset, aby byl křížek viditelný nad prstem (80px nahoru)
-            const offsetY = 80;
-            crossMarker.style.left = `${x}px`;
-            crossMarker.style.top = `${y - offsetY}px`;
-        }
-
-        // Ovládání vysouvacího panelu
-        const panelToggle = document.getElementById('panel-toggle');
-        const slidingPanel = document.getElementById('sliding-panel');
-        const canvasContainer = document.getElementById('canvas-container');
-        const controls = document.querySelector('.controls'); // Přidán výběr controls
-        const playbackControls = document.getElementById('playback-controls');
-        let isPanelOpen = false;
-
-        panelToggle.addEventListener('click', () => {
-            isPanelOpen = !isPanelOpen;
-            const height = slidingPanel.offsetHeight;
-            root.style.setProperty('--panel-height', `${height}px`);
-            slidingPanel.classList.toggle('open');
-            canvasContainer.classList.toggle('panel-open');
-            controls.classList.toggle('panel-open'); // Přidat zpět transformaci controls
-            playbackControls.classList.toggle('panel-open'); // Přidat transformaci pro playback controls
-            panelToggle.classList.toggle('panel-open');
-            panelToggle.textContent = isPanelOpen ? 'Zavřít' : 'Panel';
-        });
-
-        // Přidat nový kód pro resize panelu
-        const panelHandle = document.getElementById('panel-handle');
-        const root = document.documentElement;
-        let startY;
-        let startHeight;
-
-        function initPanelResize() {
-            panelHandle.addEventListener('mousedown', startResize);
-            document.addEventListener('mousemove', resize);
-            document.addEventListener('mouseup', stopResize);
-        }
-
-        function startResize(e) {
+        editorHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
             startY = e.clientY;
-            startHeight = slidingPanel.offsetHeight;
-            document.body.style.cursor = 'row-resize';
-            e.preventDefault();
-        }
+            startTopHeight = topHeight;
+            startBottomHeight = bottomHeight;
+        });
 
-        function resize(e) {
-            if (startY) {
-                const delta = startY - e.clientY;
-                const newHeight = Math.min(Math.max(startHeight + delta, 200), window.innerHeight * 0.9);
-                slidingPanel.style.height = `${newHeight}px`;
-                root.style.setProperty('--panel-height', `${newHeight}px`);
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
 
-                if (isPanelOpen) {
-                    slidingPanel.style.bottom = `-${newHeight}px`;
-                }
+            const deltaY = e.clientY - startY;
+            const deltaPercent = (deltaY / window.innerHeight) * 100;
+
+            const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
+            const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+            const newBottomHeight = availableSpace - newTopHeight;
+
+            if (newBottomHeight >= 20) {
+                topHeight = newTopHeight;
+                bottomHeight = newBottomHeight;
+                updateHeights();
             }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        function adjustHeightsForTopPanel(isOpen) {
+            if (isOpen) {
+                originalTopHeight = topHeight;
+                originalBottomHeight = bottomHeight;
+
+                const programList = document.getElementById('programList');
+                const items = programList.children;
+
+                // Konstanty pro výpočet výšky
+                const controlsHeight = 45; // Výška panelu s ovládacími prvky
+                const itemPadding = 10;    // Padding pro položky
+
+                // Výpočet skutečné šířky dostupné pro položky
+                const availableWidth = window.innerWidth - 150; // Odečteme prostor pro controls
+                const itemWidth = 150;      // Přibližná šířka jedné položky
+                const itemsPerRow = Math.floor(availableWidth / itemWidth);
+                const rows = Math.ceil(items.length / itemsPerRow) || 1;
+
+                // Vypočítáme celkovou výšku - pokud je jeden řádek, použijeme controlsHeight
+                const panelHeight = rows === 1 ? controlsHeight : controlsHeight * rows;
+
+                topPanel.style.height = `${panelHeight}px`;
+                container.style.marginTop = `${panelHeight}px`;
+
+                const reduction = (panelHeight / window.innerHeight) * 100;
+                const ratio = topHeight / (topHeight + bottomHeight);
+                const availableSpace = 100 - reduction;
+
+                topHeight = availableSpace * ratio;
+                bottomHeight = availableSpace * (1 - ratio);
+            } else {
+                if (originalTopHeight && originalBottomHeight) {
+                    topHeight = originalTopHeight;
+                    bottomHeight = originalBottomHeight;
+                }
+                container.style.marginTop = '0';
+            }
+            updateHeights();
         }
 
-        function stopResize() {
-            startY = null;
-            document.body.style.cursor = '';
+        function toggleTopPanel() {
+            const isOpen = topPanel.classList.toggle('open');
+            adjustHeightsForTopPanel(isOpen);
         }
 
-        // Inicializovat resize funkcionalitu
-        initPanelResize();
+        function toggleLeftPanel() {
+            leftPanel.classList.toggle('open');
+        }
 
-        // Přidat před inicializaci panel resize
-        const playPauseBtn = document.getElementById('play-pause');
-        const stepBackwardBtn = document.getElementById('step-backward');
-        const stepForwardBtn = document.getElementById('step-forward');
-        const stopBtn = document.getElementById('stop');
-        const speedDownBtn = document.getElementById('speed-down');
-        const speedUpBtn = document.getElementById('speed-up');
-        const speedResetBtn = document.getElementById('speed-reset');
-        const speedDisplay = document.getElementById('speed-display');
+        function toggleRightPanel() {
+            rightPanel.classList.toggle('open');
+        }
 
-        let isPlaying = false;
-        let playbackSpeed = 1;
+        lpButton.addEventListener('click', toggleLeftPanel);
+        ppButton.addEventListener('click', toggleRightPanel);
 
-        // Funkce pro ovládání přehrávače
-        playPauseBtn.addEventListener('click', () => {
-            isPlaying = !isPlaying;
-            playPauseBtn.textContent = isPlaying ? '⏸' : '▶';
-            // TODO: Implementovat logiku přehrávání
+        document.addEventListener('click', (e) => {
+            if (leftPanel.classList.contains('open') &&
+                !leftPanel.contains(e.target) &&
+                e.target !== lpButton) {
+                toggleLeftPanel();
+            }
+            if (rightPanel.classList.contains('open') &&
+                !rightPanel.contains(e.target) &&
+                e.target !== ppButton) {
+                toggleRightPanel();
+            }
         });
 
-        stopBtn.addEventListener('click', () => {
-            isPlaying = false;
-            playPauseBtn.textContent = '▶';
-            // TODO: Implementovat logiku zastavení
+        const freezeButton = document.getElementById('freezeButton');
+        let isPanelFrozen = false;
+        let activeProgram = null;
+
+        freezeButton.addEventListener('click', () => {
+            isPanelFrozen = !isPanelFrozen;
+            freezeButton.classList.toggle('active');
         });
 
-        stepBackwardBtn.addEventListener('click', () => {
-            // TODO: Implementovat logiku kroku vzad
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            const programList = document.getElementById('programList');
+            programList.innerHTML = '';
+
+            files.forEach(file => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (['mpf', 'spf'].includes(ext)) {
+                    const programItem = document.createElement('div');
+                    programItem.className = 'program-item';
+                    programItem.textContent = file.name;
+                    programItem.onclick = () => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            editorTextarea.value = e.target.result;
+
+                            // Zvýraznění aktivního programu
+                            if (activeProgram) {
+                                activeProgram.classList.remove('active');
+                            }
+                            programItem.classList.add('active');
+                            activeProgram = programItem;
+
+                            // Zavřít panel pouze pokud není zamrzlý
+                            if (!isPanelFrozen) {
+                                toggleTopPanel();
+                            }
+                        };
+                        reader.readAsText(file);
+                    };
+                    programList.appendChild(programItem);
+                }
+            });
+
+            if (programList.children.length > 0) {
+                topPanel.classList.add('open');
+                adjustHeightsForTopPanel(true);
+            }
         });
 
-        stepForwardBtn.addEventListener('click', () => {
-            // TODO: Implementovat logiku kroku vpřed
+        // Upravit event listener pro změnu velikosti okna
+        window.addEventListener('resize', () => {
+            updateHeights();
+            if (topPanel.classList.contains('open')) {
+                adjustHeightsForTopPanel(true);
+            }
         });
 
-        speedUpBtn.addEventListener('click', () => {
-            playbackSpeed = Math.min(playbackSpeed * 2, 16);
-            speedDisplay.textContent = playbackSpeed + '×';
-        });
+        window.addEventListener('resize', updateHeights);
 
-        speedDownBtn.addEventListener('click', () => {
-            playbackSpeed = Math.max(playbackSpeed / 2, 0.25);
-            speedDisplay.textContent = playbackSpeed + '×';
-        });
-
-        speedResetBtn.addEventListener('click', () => {
-            playbackSpeed = 1;
-            speedDisplay.textContent = '1×';
-        });
+        updateHeights();
     </script>
 </body>
 </html>
+
