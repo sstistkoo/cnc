@@ -734,8 +734,14 @@
         }
         
         function updateCrossMarkerPosition(x, y) {
-            // Přidat offset, aby byl křížek viditelný nad prstem (80px nahoru)
-            const offsetY = 80;
+            // Větší offset pro mobilní zařízení
+            let offsetY = 150; // Výrazně větší offset pro mobilní zařízení
+            
+            // Pro desktop můžeme použít menší offset
+            if (window.innerWidth > 768) {
+                offsetY = 80;
+            }
+            
             crossMarker.style.left = `${x}px`;
             crossMarker.style.top = `${y - offsetY}px`;
         }
