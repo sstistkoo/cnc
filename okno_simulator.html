@@ -52,7 +52,22 @@
         <div class="panel-handle" id="panel-handle"></div>
         <div class="panel-content">
             <h2>Informační Panel</h2>
-            <p>Zde můžete přidat libovolný obsah...</p>
+            <!-- Upravený informační panel s lepší strukturou -->
+            <div style="display: flex; justify-content: space-between; margin-top: 15px; flex-wrap: wrap;">
+                <div style="flex-basis: 48%; min-width: 200px; margin-bottom: 10px;">
+                    <h3 style="font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Informace o programu</h3>
+                    <div id="program-info" style="font-size: 14px; line-height: 1.4;">
+                        Žádný program nenačten
+                    </div>
+                </div>
+                <div style="flex-basis: 48%; min-width: 200px; margin-bottom: 10px;">
+                    <h3 style="font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Stav simulace</h3>
+                    <div id="simulation-status" style="font-size: 14px;">
+                        <p>Připraveno</p>
+                        <p style="margin-top: 5px;">Použijte ovládací prvky pro simulaci programu.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -76,7 +91,7 @@
                 const { setupPlaybackControls } = await import('./js/playback-controls.js');
                 console.log('Playback controls module loaded');
 
-                const { setupPanel } = await import('./js/panel-manager.js');
+                const { setupPanel, togglePanel } = await import('./js/panel-manager.js');
                 console.log('Panel module loaded');
 
                 // Inicializace
@@ -85,6 +100,19 @@
                 setupPlaybackControls();
                 setupPanel();
                 console.log('Initialization complete');
+
+                // Přidat přímý event listener na tlačítko panel-toggle
+                const panelToggleBtn = document.getElementById('panel-toggle');
+                if (panelToggleBtn) {
+                    console.log('Panel toggle button found, adding direct click listener');
+                    panelToggleBtn.addEventListener('click', function(e) {
+                        console.log('Panel toggle clicked directly');
+                        e.preventDefault();
+                        togglePanel(); // Použít exportovanou funkci
+                    });
+                } else {
+                    console.error('Panel toggle button not found');
+                }
 
                 // Zabránit nechtěnému zoomování na iOS zařízeních při dvojitém klepnutí
                 document.addEventListener('gesturestart', function(e) {

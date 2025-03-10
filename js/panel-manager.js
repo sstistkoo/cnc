@@ -34,7 +34,12 @@ export function setupPanel() {
 
     // Nastavit event listenery pro panel toggle
     if (panelToggle) {
-        panelToggle.addEventListener('click', togglePanel);
+        panelToggle.addEventListener('click', () => {
+            console.log('Panel toggle clicked'); // Debug log
+            togglePanel(); // Přímo volat funkci togglePanel
+        });
+    } else {
+        console.error('Panel toggle button not found');
     }
 
     // Nastavit event listenery pro resize panelu
@@ -49,7 +54,7 @@ export function setupPanel() {
     document.addEventListener('touchend', handleDragEnd);
 
     // Nastavit výchozí výšku panelu v CSS proměnné
-    document.documentElement.style.setProperty('--panel-height', '50vh');
+    document.documentElement.style.setProperty('--panel-height', '33vh'); // Změněno z 50vh na 33vh
 
     console.log('Panel resize handlers initialized');
 }
@@ -57,13 +62,28 @@ export function setupPanel() {
 /**
  * Přepne stav panelu (otevřený/zavřený)
  */
-function togglePanel() {
+export function togglePanel() {
+    console.log('Toggling panel');
+
+    if (!slidingPanel) {
+        console.error('Sliding panel element not found');
+        return;
+    }
+
     const isOpen = slidingPanel.classList.toggle('open');
+    console.log('Panel is now:', isOpen ? 'open' : 'closed');
 
     // Upravit transformaci pouze pro canvas-container a kontrolní prvky
     if (canvasContainer) canvasContainer.classList.toggle('panel-open');
     if (controls) controls.classList.toggle('panel-open');
     if (playbackControls) playbackControls.classList.toggle('panel-open');
+
+    // Aktualizovat text tlačítka
+    const panelToggle = document.getElementById('panel-toggle');
+    if (panelToggle) {
+        panelToggle.textContent = isOpen ? '✕' : '☰';
+        panelToggle.title = isOpen ? 'Zavřít panel' : 'Otevřít panel';
+    }
 
     // Zajistíme, že souřadnice a popisky os zůstanou pevně na místě
     document.querySelectorAll('.coordinates').forEach(el => {
@@ -86,15 +106,6 @@ function togglePanel() {
     const event = new CustomEvent('panel-toggle', { detail: { isOpen } });
     document.dispatchEvent(event);
 }
-
-// Odstraníme tuto funkci, protože ji nechceme používat
-// /**
-//  * Upraví zobrazení souřadnic a popisky os při otevření/zavření panelu
-//  * @param {boolean} isPanelOpen - Zda je panel otevřený
-//  */
-// function adjustCoordinatesForPanel(isPanelOpen) {
-//     // Celá funkce odstraněna - nechceme upravovat pozice souřadnic a os
-// }
 
 /**
  * Zpracuje událost začátku tažení

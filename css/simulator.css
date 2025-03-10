@@ -123,10 +123,10 @@ button:active {
 /* Styly pro vysouvací panel */
 .sliding-panel {
     position: fixed;
-    bottom: -50vh; /* Změněno z pevné hodnoty na relativní */
+    bottom: -33vh; /* Změněno z pevné hodnoty na relativní */
     left: 0;
     width: 100%; /* Panel přes celou šířku */
-    height: 50vh; /* Výchozí výška je 50% výšky obrazovky */
+    height: 33vh; /* Výchozí výška je 33% výšky obrazovky */
     background-color: rgba(255, 255, 255, 0.95); /* Zvýšit neprůhlednost pro lepší čitelnost */
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease-in-out;
@@ -298,23 +298,24 @@ button:active {
 .axis-label {
     position: fixed !important;  /* !important pro přepsání jakýchkoliv jiných stylů */
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 18px;             /* Zvětšeno z původních 14px na 18px */
     font-weight: bold;
     color: #333;
     pointer-events: none; /* Aby nereagoval na eventy myši */
     z-index: 1019;               /* Vysoký z-index, ale nižší než souřadnice */
     transform: none !important;  /* Zamezit jakémukoliv transformování */
     transition: none !important; /* Zamezit jakýmkoliv přechodům */
+    text-shadow: 1px 1px 1px white, -1px -1px 1px white, 1px -1px 1px white, -1px 1px 1px white; /* Přidání stínu pro lepší čitelnost */
 }
 
 .axis-label.x-axis {
     bottom: 150px !important;    /* !important pro zajištění, že pozice nebude přepsána */
-    right: 15px !important;      /* !important pro zajištění, že pozice nebude přepsána */
+    right: 30px !important;      /* Posunuto dál od okraje a šipky, z 15px na 30px */
 }
 
 .axis-label.z-axis {
     top: 15px !important;        /* !important pro zajištění, že pozice nebude přepsána */
-    left: 20px !important;       /* !important pro zajištění, že pozice nebude přepsána */
+    left: 35px !important;       /* Posunuto dál od šipky, z 20px na 35px */
 }
 
 /* Šipky u os */
@@ -330,18 +331,18 @@ button:active {
 
 /* Šipka X-ové osy (vpravo) */
 .axis-arrow.x-axis {
-    border-top: 6px solid transparent;
-    border-left: 12px solid #333;
-    border-bottom: 6px solid transparent;
+    border-top: 8px solid transparent;     /* Zvětšeno z 6px na 8px */
+    border-left: 16px solid #333;          /* Zvětšeno z 12px na 16px */
+    border-bottom: 8px solid transparent;  /* Zvětšeno z 6px na 8px */
     bottom: 149px !important;    /* !important pro zajištění, že pozice nebude přepsána */
-    right: 5px !important;       /* !important pro zajištění, že pozice nebude přepsána */
+    right: 12px !important;      /* Posunuto dál od pravého okraje, z 5px na 12px */
 }
 
 /* Šipka Z-ové osy (nahoru) */
 .axis-arrow.z-axis {
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 12px solid #333;
+    border-left: 8px solid transparent;    /* Zvětšeno z 6px na 8px */
+    border-right: 8px solid transparent;   /* Zvětšeno z 6px na 8px */
+    border-bottom: 16px solid #333;        /* Zvětšeno z 12px na 16px */
     top: 5px !important;         /* !important pro zajištění, že pozice nebude přepsána */
     left: 14px !important;       /* !important pro zajištění, že pozice nebude přepsána */
 }
@@ -413,6 +414,20 @@ button:active {
 
     .playback-controls.minimized button {
         opacity: 0.8;
+    }
+
+    .axis-label {
+        font-size: 16px; /* Zvětšeno z 12px na 16px pro mobilní zařízení */
+    }
+
+    .axis-label.x-axis {
+        bottom: 120px;
+        right: 25px; /* Upraveno pro mobilní zařízení */
+    }
+
+    .axis-label.z-axis {
+        top: 15px;
+        left: 30px; /* Upraveno pro mobilní zařízení */
     }
 
     .axis-label {
@@ -516,7 +531,7 @@ button:active {
     }
 
     .sliding-panel {
-        height: 40vh; /* Menší výška panelu v landscape módu */
+        height: 33vh; /* Upraveno z 40vh na 33vh pro konzistenci */
     }
 
     .axis-label.x-axis {
@@ -533,4 +548,75 @@ button:active {
     .playback-controls {
         bottom: 25px; /* Posunout výše nad spodní lištu v iOS */
     }
+}
+
+/* Přidáme styl pro SVG ikonu v simulatorButton */
+.square-button svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+/* Zvýrazníme tlačítko seznamu programů pro lepší viditelnost */
+#simulatorButton {
+    background-color: rgba(66, 133, 244, 0.3); /* Lehce modré pozadí */
+    transition: background-color 0.2s;
+}
+
+#simulatorButton:hover {
+    background-color: rgba(66, 133, 244, 0.5); /* Tmavší modré pozadí při hover */
+}
+
+#simulatorButton.active {
+    background-color: rgba(66, 133, 244, 0.7); /* Ještě tmavší modré pozadí když je aktivní */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2); /* Vnitřní stín pro indikaci aktivního stavu */
+}
+
+/* Upravíme styl pro top panel, aby měl lepší přechodovou animaci */
+.top-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-100%);
+    transition: transform 0.3s ease-out; /* Vylepšená animace */
+    z-index: 1001;
+    padding: 0;
+    min-height: 45px; /* Minimální výška pro zobrazení ovládacích prvků */
+}
+
+.top-panel.open {
+    transform: translateY(0);
+}
+
+/* Vylepšení stylu pro tlačítko panel-toggle pro lepší viditelnost a použitelnost */
+#panel-toggle {
+    background-color: rgba(66, 133, 244, 0.5); /* Výraznější modré pozadí */
+    color: white; /* Bílý text/ikona pro lepší kontrast */
+    font-size: 18px; /* Větší ikona */
+    border: 1px solid rgba(66, 133, 244, 0.7); /* Jemnější okraj */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Jemný stín pro 3D efekt */
+    transition: background-color 0.2s, transform 0.1s;
+    z-index: 1003; /* Vyšší z-index než ostatní ovládací prvky */
+}
+
+#panel-toggle:hover {
+    background-color: rgba(66, 133, 244, 0.7); /* Tmavší při najetí myší */
+}
+
+#panel-toggle:active {
+    transform: scale(0.95); /* Efekt zmáčknutí tlačítka */
+    background-color: rgba(66, 133, 244, 0.8);
+}
+
+/* Stav když je panel otevřený */
+.sliding-panel.open + #panel-toggle,
+#panel-toggle.active {
+    background-color: rgba(244, 67, 54, 0.5); /* Červenější barva když je panel otevřený */
+    border-color: rgba(244, 67, 54, 0.7);
 }

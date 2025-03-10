@@ -126,6 +126,9 @@ function loadSimulation(cncCode) {
         // Aktualizovat zobrazení
         updateSimulationDisplay();
 
+        // Aktualizovat informační panel s údaji o programu
+        updateProgramInfo(analysis);
+
         console.log('CNC kód úspěšně načten', analysis);
 
         // Odeslat zprávu zpět do rodičovského okna
@@ -147,6 +150,33 @@ function loadSimulation(cncCode) {
             }, '*');
         }
     }
+}
+
+/**
+ * Aktualizuje informační panel s údaji o programu
+ * @param {Object} analysis - Analýza CNC programu
+ */
+function updateProgramInfo(analysis) {
+    const programInfo = document.getElementById('program-info');
+    if (!programInfo) return;
+
+    let infoHTML = '';
+    if (analysis) {
+        infoHTML += `<p><strong>Celkem řádků:</strong> ${analysis.totalLines}</p>`;
+        infoHTML += `<p><strong>Příkazy pohybu:</strong> ${analysis.movementCommands}</p>`;
+        if (analysis.tools && analysis.tools.length) {
+            infoHTML += `<p><strong>Nástroje:</strong> ${analysis.tools.join(', ')}</p>`;
+        }
+        if (analysis.maxX !== undefined && analysis.minX !== undefined) {
+            infoHTML += `<p><strong>Rozsah X:</strong> ${analysis.minX.toFixed(2)} až ${analysis.maxX.toFixed(2)}</p>`;
+        }
+        if (analysis.maxZ !== undefined && analysis.minZ !== undefined) {
+            infoHTML += `<p><strong>Rozsah Z:</strong> ${analysis.minZ.toFixed(2)} až ${analysis.maxZ.toFixed(2)}</p>`;
+        }
+    } else {
+        infoHTML = 'Žádný program nenačten';
+    }
+    programInfo.innerHTML = infoHTML;
 }
 
 /**

@@ -123,16 +123,39 @@ export function setupPlaybackControls(options = {}) {
     // Přidat event listener pro panel-toggle tlačítko, které zajistí že souřadnice zůstanou viditelné
     if (panelToggleBtn) {
         panelToggleBtn.addEventListener('click', () => {
-            // Kromě standardního přepínání panelu, zajistíme viditelnost souřadnic
+            // Otevřít/zavřít panel
+            const slidingPanel = document.getElementById('sliding-panel');
+            if (slidingPanel) {
+                slidingPanel.classList.toggle('open');
+
+                // Aktualizovat třídy pro canvas-container a controls
+                const canvasContainer = document.getElementById('canvas-container');
+                const controls = document.querySelector('.controls');
+                const playbackControls = document.getElementById('playback-controls');
+
+                if (canvasContainer) canvasContainer.classList.toggle('panel-open');
+                if (controls) controls.classList.toggle('panel-open');
+                if (playbackControls) playbackControls.classList.toggle('panel-open');
+            }
+
+            // Zajistíme, že souřadnice a popisky os zůstanou pevně na místě
             setTimeout(() => {
-                // Zajistíme, že souřadnice a popisky os zůstanou pevně na místě
                 document.querySelectorAll('.coordinates, .axis-label, .axis-arrow').forEach(el => {
                     el.style.position = 'fixed';
                     el.style.transform = 'none';
                     el.style.transition = 'none';
                     el.style.zIndex = '2000'; // Vyšší z-index než panel
                 });
-            }, 10); // Krátké zpoždění pro zajištění, že se stihne provést po togglePanel
+
+                // Zajistit správnou pozici souřadnic
+                const coordDisplay = document.getElementById('coord-display');
+                if (coordDisplay) {
+                    coordDisplay.style.position = 'fixed';
+                    coordDisplay.style.bottom = '40px';
+                    coordDisplay.style.left = '15px';
+                    coordDisplay.style.top = 'auto';
+                }
+            }, 10);
         });
     }
 
