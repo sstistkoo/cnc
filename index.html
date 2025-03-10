@@ -1798,6 +1798,159 @@
 
         // Odstranit ostatní překrývající se funkce addLineNumbers nebo je nahradit voláním refreshLineNumbers()
         // Zde by měly být odstraněny všechny duplicitní definice addLineNumbers
+
+        // Kompletně vyměním všechny handlery pro tlačítko editorHandle
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM načten - nastavuji nové handlery');
+
+            // Vyčistit všechny existující handlery pro editorHandle a nastavit nové
+            const editorHandle = document.getElementById('editorHandle');
+            if (editorHandle) {
+                // Odstranil jsem všechny existující event listenery
+                const newEditorHandle = editorHandle.cloneNode(true);
+                editorHandle.parentNode.replaceChild(newEditorHandle, editorHandle);
+
+                // Přidat nový event listener pro kliknutí
+                newEditorHandle.addEventListener('click', toggleEditorPanel);
+
+                console.log('Handler pro menu tlačítko nastaven');
+            }
+
+            // Přidat fixní kód pro čísla řádků
+            setupLineNumbersInitial();
+        });
+
+        // Nová funkce pro přepnutí panelu editoru
+        function toggleEditorPanel(e) {
+            console.log('Kliknuto na tlačítko Menu');
+            e.stopPropagation();
+
+            // Nastavit proměnné pro výšky a stavy
+            isMiddleOpen = !isMiddleOpen;
+
+            if (isMiddleOpen) {
+                console.log('Otevírám panel editoru');
+                const availableSpace = 100 - MIDDLE_HEIGHT;
+                topHeight = availableSpace * 0.7; // 70% horní panel
+                bottomHeight = availableSpace * 0.3; // 30% dolní panel
+            } else {
+                console.log('Zavírám panel editoru');
+                topHeight = 99;
+                bottomHeight = 1;
+            }
+
+            // Aktualizovat výšky elementů
+            topEditor.style.height = `${topHeight}vh`;
+            middleWindow.style.height = `${isMiddleOpen ? MIDDLE_HEIGHT : 1}vh`;
+            bottomEditor.style.height = `${bottomHeight}vh`;
+
+            // Změnit viditelnost obsahu
+            middleContent.classList.toggle('hidden', !isMiddleOpen);
+
+            // Aktualizovat číslování řádků v editoru po krátké prodlevě
+            setTimeout(function() {
+                setupLineNumbersInitial();
+                console.log('Číslování řádků aktualizováno');
+            }, 300);
+        }
+
+        // Nová funkce pro inicializaci číslování řádků, která není závislá na předchozích implementacích
+        function setupLineNumbersInitial() {
+            const textarea = document.querySelector('#bottomEditor textarea');
+            if (!textarea) {
+                console.warn('Nenalezen textarea pro číslování řádků');
+                return;
+            }
+
+            console.log('Inicializuji číslování řádků');
+            const container = textarea.parentElement;
+
+            // Odstranit existující číslování řádků
+            let lineNumbers = container.querySelector('.line-numbers');
+            if (lineNumbers) {
+                lineNumbers.remove();
+            }
+
+            // Vytvořit nový element pro čísla řádků
+            lineNumbers = document.createElement('div');
+            lineNumbers.className = 'line-numbers';
+            container.insertBefore(lineNumbers, textarea);
+
+            // Přidat CSS styly pro číslování řádků
+            let style = document.getElementById('line-numbers-css');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'line-numbers-css';
+                style.textContent = `
+                    .editor {
+                        position: relative;
+                    }
+                    .editor textarea {
+                        padding-left: 45px !important;
+                        font-family: monospace;
+                        font-size: 1rem;
+                        line-height: 1.5;
+                        white-space: pre !important;
+                        tab-size: 4;
+                        -moz-tab-size: 4;
+                    }
+                    .line-numbers {
+                        position: absolute;
+                        top: 1.5rem;
+                        left: 0;
+                        width: 40px;
+                        height: calc(100% - 1.5rem);
+                        background-color: #f5f5f5;
+                        border-right: 1px solid #ddd;
+                        font-family: monospace;
+                        font-size: 1rem;
+                        color: #777;
+                        text-align: right;
+                        z-index: 2;
+                        user-select: none;
+                        pointer-events: none;
+                        padding: 0;
+                        overflow: hidden;
+                    }
+                    .line-numbers > div {
+                        height: 1.5rem;
+                        line-height: 1.5rem;
+                        padding-right: 5px;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Funkce pro aktualizaci čísel řádků
+            function updateLineNumbers() {
+                const lines = textarea.value.split('\n');
+                let html = '';
+
+                for (let i = 0; i < lines.length; i++) {
+                    html += `<div>${i+1}</div>`;
+                }
+
+                lineNumbers.innerHTML = html;
+                lineNumbers.scrollTop = textarea.scrollTop;
+            }
+
+            // Nastavit event listenery
+            textarea.addEventListener('input', updateLineNumbers);
+            textarea.addEventListener('scroll', function() {
+                lineNumbers.scrollTop = textarea.scrollTop;
+            });
+
+            // První aktualizace čísel řádků
+            updateLineNumbers();
+
+            // Pro jistotu přidat více aktualizací po časové prodlevě
+            setTimeout(updateLineNumbers, 100);
+            setTimeout(updateLineNumbers, 500);
+            console.log('Číslování řádků inicializováno');
+        }
+
+        // Odstraňuji duplicitní kód a ponechávám pouze novou implementaci
+        // ...existing code...
     </script>
 </body>
 </html>
