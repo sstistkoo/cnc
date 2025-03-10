@@ -30,8 +30,8 @@
             touch-action: none; /* Zakáže základní dotykové chování, abychom mohli implementovat vlastní */
         }
         .controls {
-            position: fixed;
-            bottom: 60px;
+            position: absolute;
+            top: 60px; /* Posunuto výše, aby nezasahovalo do přehrávače na mobilu */
             right: 20px;
             background-color: rgba(255, 255, 255, 0.9);
             padding: 5px;
@@ -70,11 +70,16 @@
         }
         @media (max-width: 768px) {
             .controls {
+                top: 100px; /* Ještě výše na mobilních zařízeních */
+                right: 15px;
                 padding: 8px;
             }
-            button {
+            .controls button {
                 padding: 12px 16px; /* Ještě větší tlačítka na malých obrazovkách */
                 margin: 4px;
+                width: 50px; /* Větší tlačítka na dotykovém zařízení */
+                height: 50px;
+                font-size: 24px;
             }
             .coordinates {
                 font-size: 16px; /* Větší text na mobilních zařízeních */
@@ -778,7 +783,7 @@
             // Reset pinch-to-zoom variables when touch ends
             initialPinchDistance = 0;
             
-            // Pokud není žádný prst na obrazovce, resetovat všechny stavy
+            // Pokud není žádný prst na obrazovce, resetovat všechna stavy
             if (e.touches.length === 0) {
                 isDragging = false;
                 isHolding = false;
