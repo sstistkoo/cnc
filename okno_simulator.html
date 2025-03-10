@@ -7,9 +7,10 @@
     <style>
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
-            touch-action: manipulation; /* Zabraňuje výchozímu chování prohlížeče při dotycích */
+            touch-action: none; /* Disable browser's default touch actions */
         }
         #canvas-container {
             position: relative;
@@ -339,6 +340,7 @@
         // Proměnné pro pinch-to-zoom
         let initialPinchDistance = 0;
         let initialScale = 0;
+        let lastPinchCenter = { x: 0, y: 0 };
 
         // Nastavení velikosti canvasu podle okna
         function resizeCanvas() {
@@ -667,9 +669,18 @@
             
             // Detekce pinch gesta (dva prsty)
             if (e.touches.length === 2) {
+                // Zrušit podržení a tažení
+                clearHoldTimer();
+                isDragging = false;
+                isHolding = false;
+                crossMarker.style.display = 'none';
+                
                 // Uložit počáteční vzdálenost mezi prsty
                 initialPinchDistance = getPinchDistance(e.touches);
                 initialScale = scale;
+                
+                // Uložit střed pinch gesta
+                lastPinchCenter = getPinchCenter(e.touches);
                 return;
             }
             
@@ -696,19 +707,37 @@
                 // Vypočítat aktuální vzdálenost mezi prsty
                 const currentDistance = getPinchDistance(e.touches);
                 
+                // Získat střed pinch gesta
+                const currentCenter = getPinchCenter(e.touches);
+                
                 // Změnit měřítko podle změny vzdálenosti
                 if (initialPinchDistance > 0) {
                     // Vypočítat poměr změny vzdálenosti
                     const pinchRatio = currentDistance / initialPinchDistance;
                     
-                    // Aplikovat nové měřítko
-                    scale = initialScale * pinchRatio;
+                    // Vypočítat nové měřítko
+                    const newScale = Math.max(5, Math.min(initialScale * pinchRatio, 200));
                     
-                    // Omezit minimální a maximální měřítko
-                    scale = Math.max(5, Math.min(scale, 200));
-                    
-                    drawGrid();
+                    // Upravit offset tak, aby se zachoval střed zoomu
+                    if (newScale !== scale) {
+                        // Přizpůsobit offset, aby se zachoval střed pinch gesta
+                        const zoomFactor = newScale / scale;
+                        const centerX = currentCenter.x;
+                        const centerY = currentCenter.y;
+                        
+                        offsetX = centerX - (centerX - offsetX) * zoomFactor;
+                        offsetY = centerY - (centerY - offsetY) * zoomFactor;
+                        
+                        // Aktualizovat měřítko
+                        scale = newScale;
+                        
+                        // Překreslit mřížku
+                        drawGrid();
+                    }
                 }
+                
+                // Aktualizovat poslední střed
+                lastPinchCenter = currentCenter;
                 return;
             }
             
@@ -738,22 +767,25 @@
             }
             
             // Aktualizovat zobrazení souřadnic
-            const rawX = (e.touches[0].clientX - offsetX) / scale;
-            const rawY = -(e.touches[0].clientY - offsetY) / scale;
-            const gridX = parseFloat(rawX.toFixed(3)).toString();
-            const gridY = parseFloat(rawY.toFixed(3)).toString();
-            
-            // Zobrazit souřadnice pouze pokud není aktivní křížek
-            if (!isHolding) {
-                coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+            if (e.touches.length > 0) {
+                const rawX = (e.touches[0].clientX - offsetX) / scale;
+                const rawY = -(e.touches[0].clientY - offsetY) / scale;
+                const gridX = parseFloat(rawX.toFixed(3)).toString();
+                const gridY = parseFloat(rawY.toFixed(3)).toString();
+                
+                // Zobrazit souřadnice pouze pokud není aktivní křížek
+                if (!isHolding) {
+                    coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
+                }
             }
         });
-
+        
+        // Přidat touchend event handler
         canvas.addEventListener('touchend', (e) => {
             // Reset pinch-to-zoom variables when touch ends
             initialPinchDistance = 0;
             
-            // Pokud není žádný prst na obrazovce, resetovat všechny stavy
+            // Pokud není žádný prst na obrazovce, resetovat všechna stavy
             if (e.touches.length === 0) {
                 isDragging = false;
                 
@@ -776,6 +808,21 @@
             }
         });
         
+        // Funkce pro výpočet vzdálenosti mezi dvěma dotyky
+        function getPinchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        // Funkce pro výpočet středu mezi dvěma dotyky
+        function getPinchCenter(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+        
         // Přidat touchcancel event pro úplnost
         canvas.addEventListener('touchcancel', () => {
             isDragging = false;
@@ -784,13 +831,6 @@
             crossMarker.style.display = 'none';
             initialPinchDistance = 0;
         });
-        
-        // Funkce pro výpočet vzdálenosti mezi dvěma dotyky
-        function getPinchDistance(touches) {
-            const dx = touches[0].clientX - touches[1].clientX;
-            const dy = touches[0].clientY - touches[1].clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
         
         // Funkce pro práci s křížkem při podržení
         function startHoldTimer(x, y) {
