@@ -340,10 +340,9 @@
             <button id="speed-reset" title="Resetovat rychlost">↺</button>
         </div>
         <button id="controls-toggle" title="Zobrazit/skrýt ovládání">👁️</button>
-        <button id="menu-button" title="Otevřít menu">☰</button>
+        <button id="panel-toggle" title="Otevřít/zavřít panel">☰</button>
     </div>
 
-    <button class="panel-toggle" id="panel-toggle">Panel</button>
     <div class="sliding-panel" id="sliding-panel">
         <div class="panel-handle" id="panel-handle"></div>
         <div class="panel-content">
@@ -935,8 +934,6 @@
             canvasContainer.classList.toggle('panel-open');
             controls.classList.toggle('panel-open'); // Přidat zpět transformaci controls
             playbackControls.classList.toggle('panel-open'); // Přidat transformaci pro playback controls
-            panelToggle.classList.toggle('panel-open');
-            panelToggle.textContent = isPanelOpen ? 'Zavřít' : 'Panel';
         });
 
         // Přidat nový kód pro resize panelu
@@ -1043,15 +1040,6 @@
         if (controlsVisibilityBtn) {
             controlsVisibilityBtn.addEventListener('click', () => {
                 controlsPanel.classList.toggle('hidden');
-            });
-        }
-
-        // Přidat funkci pro tlačítko Menu
-        const menuButton = document.getElementById('menu-button');
-        if (menuButton) {
-            menuButton.addEventListener('click', () => {
-                // Komunikace s rodičovským oknem (index.html)
-                window.parent.postMessage({ action: 'toggleMenu' }, '*');
             });
         }
     </script>
