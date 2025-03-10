@@ -113,12 +113,28 @@ function setupEventListeners() {
 }
 
 /**
- * Změní velikost canvasu podle velikosti okna
+ * Změní velikost canvasu podle velikosti okna a optimalizuje pro mobilní zařízení
  */
 function resizeCanvas() {
     const container = document.getElementById('canvas-container');
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+
+    // Vypočítat dostupnou výšku a šířku bez překryvů systémových lišt
+    const availableWidth = container.clientWidth || window.innerWidth;
+    const availableHeight = container.clientHeight || window.innerHeight;
+
+    // Nastavit správný poměr stran
+    canvas.width = availableWidth;
+    canvas.height = availableHeight;
+
+    // Při změně orientace mobilního zařízení přizpůsobit zobrazení
+    if (window.matchMedia("(orientation: portrait)").matches) {
+        // Vertikální orientace
+        offsetY = canvas.height - 150;
+    } else {
+        // Horizontální orientace - menší odsazení od spodního okraje
+        offsetY = canvas.height - 100;
+    }
+
     drawGrid();
 }
 
@@ -486,6 +502,12 @@ function handleTouchStart(e) {
             // Uložit počáteční pozici křížku v souřadnicích mřížky
             const gridX = (touchStartX - offsetX) / scale;
             const gridY = (offsetY - touchStartY) / scale;
+
+            // Přidat vibraci pro zpětnou vazbu (pokud zařízení podporuje)
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+            }
+
             showCrossMarker(touchStartX, touchStartY, gridX, gridY);
         }, LONG_PRESS_DURATION);
     } else if (e.touches.length === 2) {
@@ -511,7 +533,42 @@ function handleTouchMove(e) {
         const touchX = e.touches[0].clientX;
         const touchY = e.touches[0].clientY;
 
-        if (isLongPress) {
+        // Kontrola minimálního pohybu pro zabránění náhodným pohybům
+        const deltaX = touchX - lastX;
+        const deltaY = touchY - lastY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if (distance < 2) return; // Ignorovat velmi malé pohyby
+
+        if (isCrossMarkerActive) {
+            // Režim pohybu křížku
+            const screenX = touchX;
+            const screenY = touchY - 80; // Offset 80px nad bodem
+
+            // Přepočítat souřadnice v mřížce pro pozici křížku
+            const gridX = (screenX - offsetX) / scale;
+            const gridY = (offsetY - screenY) / scale;
+
+            // Aktualizovat pozici křížku
+            const crossMarker = document.getElementById('cross-marker');
+            if (crossMarker) {
+                crossMarker.style.left = `${screenX}px`;
+                crossMarker.style.top = `${screenY}px`;
+
+                // Uložit aktuální souřadnice
+                crossMarker.dataset.gridX = gridX.toString();
+                crossMarker.dataset.gridY = gridY.toString();
+
+                // Aktualizovat zobrazení souřadnic
+                const coordDisplay = document.getElementById('coord-display');
+                if (coordDisplay) {
+                    const formattedX = formatCoordinate(gridX);
+                    const formattedZ = formatCoordinate(gridY);
+                    coordDisplay.textContent = `X: ${formattedX}, Z: ${formattedZ}`;
+                    coordDisplay.style.fontWeight = 'bold';
+                }
+            }
+        } else if (isLongPress) {
             // Posunout mapu, ale zachovat křížek na stejné pozici v souřadnicích mřížky
             offsetX += touchX - lastX;
             offsetY += touchY - lastY;
@@ -533,7 +590,7 @@ function handleTouchMove(e) {
                 // Aktualizovat zobrazení souřadnic křížku
                 const coordDisplay = document.getElementById('coord-display');
                 if (coordDisplay) {
-                    coordDisplay.textContent = `X: ${gridX.toFixed(1)}, Z: ${gridY.toFixed(1)}`;
+                    coordDisplay.textContent = `X: ${formatCoordinate(gridX)}, Z: ${formatCoordinate(gridY)}`;
                     coordDisplay.style.fontWeight = 'bold';
                 }
             }
@@ -558,19 +615,26 @@ function handleTouchMove(e) {
 
         drawGrid();
     } else if (e.touches.length === 2) {
-        // Dva prsty - pinch zoom
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        // Optimalizovaný pinch-to-zoom
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Vypočítat střed mezi prsty
-        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
 
         // Změnit měřítko podle změny vzdálenosti
         if (lastPinchDistance > 0) {
             const zoomFactor = distance / lastPinchDistance;
-            zoomAt(centerX, centerY, zoomFactor);
+
+            // Použít plynulejší změnu měřítka pro pinch-to-zoom
+            const smoothZoomFactor = 1 + (zoomFactor - 1) * 0.3;
+
+            zoomAt(centerX, centerY, smoothZoomFactor);
         }
 
         lastPinchDistance = distance;

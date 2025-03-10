@@ -4,10 +4,12 @@
  */
 
 // Globální proměnné
-let root;
 let slidingPanel;
 let panelHandle;
-let isPanelOpen = false;
+let canvasContainer;
+let controls;
+let playbackControls;
+let isDragging = false;
 let startY, startHeight;
 
 /**
@@ -15,50 +17,64 @@ let startY, startHeight;
  */
 export function setupPanel() {
     console.log('Panel manager initialized');
-    const slidingPanel = document.getElementById('sliding-panel');
+
+    // Získat reference na elementy
+    slidingPanel = document.getElementById('sliding-panel');
+    panelHandle = document.getElementById('panel-handle');
+    canvasContainer = document.getElementById('canvas-container');
+    controls = document.querySelector('.controls');
+    playbackControls = document.getElementById('playback-controls');
+
     const panelToggle = document.getElementById('panel-toggle');
 
-    if (slidingPanel && panelToggle) {
-        panelToggle.addEventListener('click', () => {
-            slidingPanel.classList.toggle('open');
-        });
+    if (!slidingPanel || !panelHandle) {
+        console.error('Panel elements not found');
+        return;
     }
+
+    // Nastavit event listenery pro panel toggle
+    if (panelToggle) {
+        panelToggle.addEventListener('click', togglePanel);
+    }
+
+    // Nastavit event listenery pro resize panelu
+    // Pro myš
+    panelHandle.addEventListener('mousedown', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+
+    // Pro dotyková zařízení
+    panelHandle.addEventListener('touchstart', handleDragStart, { passive: false });
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
+
+    // Nastavit výchozí výšku panelu v CSS proměnné
+    document.documentElement.style.setProperty('--panel-height', '50vh');
+
+    console.log('Panel resize handlers initialized');
 }
 
 /**
  * Přepne stav panelu (otevřený/zavřený)
- * @param {HTMLElement} canvasContainer - Reference na kontejner canvasu
- * @param {HTMLElement} controls - Reference na ovládací prvky
- * @param {HTMLElement} playbackControls - Reference na ovládací prvky přehrávače
  */
-function togglePanel(canvasContainer, controls, playbackControls) {
-    isPanelOpen = !isPanelOpen;
+function togglePanel() {
+    const isOpen = slidingPanel.classList.toggle('open');
 
-    if (slidingPanel) {
-        const height = slidingPanel.offsetHeight;
-        root.style.setProperty('--panel-height', `${height}px`);
-        slidingPanel.classList.toggle('open');
-    }
-
-    if (canvasContainer) {
-        canvasContainer.classList.toggle('panel-open');
-    }
-
-    if (controls) {
-        controls.classList.toggle('panel-open');
-    }
-
-    if (playbackControls) {
-        playbackControls.classList.toggle('panel-open');
-    }
+    if (canvasContainer) canvasContainer.classList.toggle('panel-open');
+    if (controls) controls.classList.toggle('panel-open');
+    if (playbackControls) playbackControls.classList.toggle('panel-open');
 }
 
 /**
- * Zahájí změnu velikosti panelu
+ * Zpracuje událost začátku tažení
  * @param {Event} e - Událost myši nebo dotyku
  */
-function startPanelResize(e) {
+function handleDragStart(e) {
     e.preventDefault();
+    isDragging = true;
+
+    // Nastavit kurzor
+    document.body.style.cursor = 'row-resize';
 
     // Získat počáteční pozici
     if (e.type === 'touchstart') {
@@ -67,81 +83,58 @@ function startPanelResize(e) {
         startY = e.clientY;
     }
 
+    // Získat počáteční výšku panelu
     startHeight = slidingPanel.offsetHeight;
 
-    // Změnit kurzor
-    document.body.style.cursor = 'row-resize';
+    // Přidat třídu pro visuální indikaci změny velikosti
+    panelHandle.classList.add('resizing');
 
-    // Přidat třídu pro indikaci změny velikosti
-    if (panelHandle) {
-        panelHandle.classList.add('resizing');
-    }
+    console.log('Panel resize started', { startY, startHeight });
 }
 
 /**
- * Změní velikost panelu
+ * Zpracuje událost tažení (změna velikosti panelu)
  * @param {Event} e - Událost myši nebo dotyku
  */
-function resizePanel(e) {
-    if (!panelHandle || !panelHandle.classList.contains('resizing')) return;
+function handleDragMove(e) {
+    if (!isDragging) return;
 
     let currentY;
+
     if (e.type === 'touchmove') {
-        e.preventDefault();
+        e.preventDefault(); // Zabránit scrollování během změny velikosti
         currentY = e.touches[0].clientY;
     } else {
         currentY = e.clientY;
     }
 
-    // Vypočítat novou výšku
-    const deltaY = startY - currentY;
-    let newHeight = startHeight + deltaY;
+    // Vypočítat změnu výšky (táhlo se pohybuje vzhůru, panel se zvětšuje)
+    const delta = startY - currentY;
+    let newHeight = Math.max(150, Math.min(startHeight + delta, window.innerHeight * 0.9));
 
-    // Omezit minimální a maximální výšku
-    newHeight = Math.max(100, Math.min(newHeight, window.innerHeight * 0.8));
-
-    // Nastavit novou výšku
+    // Aktualizovat výšku panelu
     slidingPanel.style.height = `${newHeight}px`;
-    root.style.setProperty('--panel-height', `${newHeight}px`);
 
-    // Aktualizovat transformace ostatních elementů
-    const canvasContainer = document.getElementById('canvas-container');
-    const controls = document.querySelector('.controls');
-    const playbackControls = document.getElementById('playback-controls');
+    // Aktualizovat CSS proměnnou pro transformace
+    document.documentElement.style.setProperty('--panel-height', `${newHeight}px`);
 
-    if (canvasContainer && canvasContainer.classList.contains('panel-open')) {
-        canvasContainer.style.transform = `translateY(-${newHeight}px)`;
-    }
-
-    if (controls && controls.classList.contains('panel-open')) {
-        controls.style.transform = `translateY(-${newHeight}px)`;
-    }
-
-    if (playbackControls && playbackControls.classList.contains('panel-open')) {
-        playbackControls.style.transform = `translate(-50%, -${newHeight}px)`;
+    // Pokud je panel otevřený, aktualizovat bottom pozici
+    if (slidingPanel.classList.contains('open')) {
+        slidingPanel.style.bottom = `-${newHeight}px`;
     }
 }
 
 /**
- * Ukončí změnu velikosti panelu
+ * Zpracuje událost konce tažení
  */
-function stopPanelResize() {
-    if (!panelHandle || !panelHandle.classList.contains('resizing')) return;
+function handleDragEnd() {
+    if (!isDragging) return;
 
-    // Odstranit třídu pro indikaci změny velikosti
+    isDragging = false;
+    document.body.style.cursor = '';
     panelHandle.classList.remove('resizing');
 
-    // Vrátit kurzor do normálního stavu
-    document.body.style.cursor = '';
-
-    // Resetovat inline styly a použít CSS proměnné
-    const canvasContainer = document.getElementById('canvas-container');
-    const controls = document.querySelector('.controls');
-    const playbackControls = document.getElementById('playback-controls');
-
-    if (canvasContainer) canvasContainer.style.transform = '';
-    if (controls) controls.style.transform = '';
-    if (playbackControls) playbackControls.style.transform = '';
+    console.log('Panel resize ended');
 }
 
 /**
@@ -149,6 +142,13 @@ function stopPanelResize() {
  * @returns {boolean} True, pokud je panel otevřený
  */
 export function isPanelVisible() {
-    const panel = document.getElementById('sliding-panel');
-    return panel ? panel.classList.contains('open') : false;
+    return slidingPanel ? slidingPanel.classList.contains('open') : false;
+}
+
+/**
+ * Získá aktuální výšku panelu
+ * @returns {number} Výška panelu v pixelech
+ */
+export function getPanelHeight() {
+    return slidingPanel ? slidingPanel.offsetHeight : 0;
 }
