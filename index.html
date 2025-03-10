@@ -83,7 +83,6 @@
             z-index: 1001;
             transform: translateY(0);
             transition: transform 0.3s ease-in-out;
-            bottom: 0;
             visibility: visible;
         }
 
@@ -510,6 +509,15 @@
 
         document.addEventListener('mouseup', () => {
             isDragging = false;
+        });
+
+        // Naslouchání na zprávy z iframe (okno_simulator.html)
+        window.addEventListener('message', (event) => {
+            // Kontrola, zda zpráva obsahuje akci toggleMenu
+            if (event.data && event.data.action === 'toggleMenu') {
+                // Aktivace stejné funkce jako při kliknutí na tlačítko Menu
+                editorHandle.click();
+            }
         });
 
         function adjustHeightsForTopPanel(isOpen) {

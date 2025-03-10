@@ -169,7 +169,7 @@
         /* Přidat nový styl pro playback controls */
         .playback-controls {
             position: fixed;
-            bottom: 70px;
+            bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
             background-color: rgba(255, 255, 255, 0.7); /* Zvýšená průhlednost */
@@ -335,6 +335,7 @@
             <button id="speed-up" title="Zvýšit rychlost">+</button>
             <button id="speed-reset" title="Resetovat rychlost">↺</button>
         </div>
+        <button id="menu-button" title="Otevřít menu">Menu</button>
     </div>
 
     <button class="panel-toggle" id="panel-toggle">Panel</button>
@@ -389,7 +390,7 @@
 
             // Umístit počátek souřadnic do levého dolního rohu s offsetem
             offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
-            offsetY = canvas.height - 75;  // Increased by 1.5x (from 50px to 75px) from bottom edge
+            offsetY = canvas.height - 112;  // Increased by 50% more (from 75px to 112px) from bottom edge
 
             drawGrid();
         });
@@ -607,7 +608,7 @@
 
             // Resetovat do levého dolního rohu (místo do středu)
             offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
-            offsetY = canvas.height - 75;  // Increased by 1.5x (from 50px to 75px) from bottom edge
+            offsetY = canvas.height - 112;  // Increased by 50% more (from 75px to 112px) from bottom edge
             drawGrid();
         });
 
@@ -1032,6 +1033,24 @@
             controlsPanel.classList.toggle('hidden', !controlsVisible);
             controlsToggleBtn.textContent = controlsVisible ? 'Skrýt ovládání' : 'Zobrazit ovládání';
         });
+
+        // Přidat novou funkčnost pro tlačítko zobrazení/skrytí ovládání
+        const controlsVisibilityBtn = document.getElementById('controls-visibility');
+        if (controlsVisibilityBtn) {
+            controlsVisibilityBtn.addEventListener('click', () => {
+                controlsPanel.classList.toggle('hidden');
+                controlsToggleBtn.textContent = controlsPanel.classList.contains('hidden') ? 'Zobrazit ovládání' : 'Skrýt ovládání';
+            });
+        }
+
+        // Přidat funkci pro tlačítko Menu
+        const menuButton = document.getElementById('menu-button');
+        if (menuButton) {
+            menuButton.addEventListener('click', () => {
+                // Komunikace s rodičovským oknem (index.html)
+                window.parent.postMessage({ action: 'toggleMenu' }, '*');
+            });
+        }
     </script>
 </body>
 </html>
