@@ -54,12 +54,12 @@ button:active {
 
 .controls {
     position: absolute;
-    top: 15px; /* Zvýšit pro lepší dosah na mobilech */
+    top: 45px; /* Posunuto o 30px níže (z původních 15px) */
     right: 15px;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 8px;
+    background-color: rgba(255, 255, 255, 0.3); /* 30% neprůhlednost, stejně jako playback controls */
+    padding: 6px;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: none; /* Odstranění stínu */
     z-index: 1000;
     transition: transform 0.3s ease-in-out;
     display: flex;
@@ -77,16 +77,18 @@ button:active {
 
 .controls button {
     margin: 3px;
-    width: 44px; /* Větší výchozí tlačítka */
-    height: 44px;
+    width: 36px; /* Menší tlačítka, stejně jako u playback */
+    height: 36px;
     line-height: 1;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.3); /* 30% neprůhlednost */
+    box-shadow: none; /* Odstranění stínu */
 }
 
 .coordinates {
@@ -170,19 +172,43 @@ button:active {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.3); /* 30% neprůhlednost */
+    padding: 8px 10px;
     border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(5px); /* Jemné rozmazání pozadí */
+    -webkit-backdrop-filter: blur(5px);
     z-index: 1002;
     display: flex;
-    gap: 10px;
-    transition: transform 0.3s ease-in-out;
-    flex-wrap: wrap; /* Povolí zalamování na úzkých obrazovkách */
+    gap: 8px;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+    flex-wrap: nowrap; /* Zabránit zalomení na více řádků */
     justify-content: center; /* Vycentrování obsahu */
-    max-width: 95vw; /* Omezení šířky na mobilech */
+    max-width: 98vw; /* Zvýšit maximální šířku */
+}
+
+/* Styl pro minimalizovaný přehrávač */
+.playback-controls.minimized {
+    padding: 3px 5px;
+    background-color: rgba(255, 255, 255, 0.2);
+    width: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.playback-controls.minimized .playback-button,
+.playback-controls.minimized .speed-controls {
+    display: none;
+}
+
+/* Tlačítko pro minimalizaci vždy viditelné */
+.playback-controls button.toggle-minimize {
+    background-color: rgba(255, 255, 255, 0.4); /* Lehce výraznější než ostatní tlačítka */
+    border-radius: 6px;
+    border-color: rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s;
+}
+
+.playback-controls button.toggle-minimize:hover {
+    background-color: rgba(255, 255, 255, 0.6);
 }
 
 .playback-controls.panel-open {
@@ -190,32 +216,32 @@ button:active {
 }
 
 .playback-controls button {
-    width: 44px; /* Větší tlačítka */
-    height: 44px;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background-color: rgba(255, 255, 255, 0.9);
-    font-size: 18px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.playback-controls button:hover {
-    background-color: #f0f0f0;
+    width: 36px; /* Menší tlačítka pro lepší umístění na jednom řádku */
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.3); /* 30% neprůhlednost */
+    font-size: 16px;
+    box-shadow: none; /* Odstranění stínu */
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .playback-controls .speed-controls {
     display: flex;
-    gap: 6px;
-    margin-left: 8px;
-    padding-left: 8px;
+    gap: 4px;
+    margin-left: 6px;
+    padding-left: 6px;
     border-left: 1px solid rgba(0, 0, 0, 0.1);
     align-items: center;
 }
 
 .playback-speed {
-    font-size: 16px;
-    line-height: 44px;
-    margin: 0 6px;
+    font-size: 14px;
+    line-height: 36px;
+    margin: 0 2px;
     white-space: nowrap;
     color: rgba(0, 0, 0, 0.9);
 }
@@ -255,17 +281,21 @@ button:active {
 /* Přizpůsobení pro mobilní zařízení */
 @media (max-width: 768px) {
     .controls {
-        top: 10px;
+        top: 40px; /* Trochu výš na mobilních zařízeních */
         right: 10px;
-        padding: 8px;
+        padding: 4px;
+        background-color: rgba(255, 255, 255, 0.2); /* Ještě více průhledné na mobilních zařízeních */
+        border: 1px solid rgba(255, 255, 255, 0.3); /* Přidat jemný okraj pro lepší viditelnost */
     }
+
     .controls button {
-        padding: 12px 16px; /* Ještě větší tlačítka na malých obrazovkách */
-        margin: 4px;
-        width: 50px; /* Větší tlačítka na dotykovém zařízení */
-        height: 50px;
-        font-size: 24px;
+        margin: 2px;
+        width: 32px; /* Stejná velikost jako playback tlačítka na mobilu */
+        height: 32px;
+        font-size: 16px;
+        background-color: rgba(255, 255, 255, 0.3);
     }
+
     .coordinates {
         font-size: 16px; /* Větší text na mobilních zařízeních */
     }
@@ -274,40 +304,59 @@ button:active {
         right: 0;
     }
     .playback-controls {
-        bottom: 60px;
-        padding: 6px;
-        gap: 4px;
-        width: 90%; /* Omezení šířky na mobilech */
-        max-width: 400px; /* Maximální šířka */
+        bottom: 15px;
+        padding: 4px 6px;
+        gap: 3px;
+        background-color: rgba(255, 255, 255, 0.2); /* Ještě více průhledné na mobilních zařízeních */
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
+
     .playback-controls button {
         width: 32px;
         height: 32px;
         font-size: 14px;
+        background-color: rgba(255, 255, 255, 0.3);
+        margin: 0;
     }
+
     .playback-controls .speed-controls {
-        margin-left: 8px;
-        padding-left: 8px;
+        margin-left: 3px;
+        padding-left: 3px;
+        gap: 2px;
     }
+
     .playback-speed {
         font-size: 12px;
         line-height: 32px;
-        margin: 0 4px;
+        margin: 0 2px;
+        min-width: 20px; /* Zajistit minimální šířku pro hodnotu rychlosti */
+        text-align: center;
+    }
+
+    .playback-controls.minimized {
+        padding: 2px 4px;
+        gap: 2px;
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .playback-controls.minimized button {
+        opacity: 0.8;
     }
 }
 
 /* Přizpůsobení pro mobilní zařízení - malé obrazovky */
 @media (max-width: 480px) {
     .controls {
-        top: 10px;
+        top: 40px;
         right: 10px;
+        padding: 3px;
     }
 
     .controls button {
-        width: 50px;
-        height: 50px;
-        margin: 4px;
-        font-size: 22px;
+        width: 30px;  /* Ještě menší tlačítka na nejmenších obrazovkách */
+        height: 30px;
+        margin: 2px;
+        font-size: 16px; /* Menší font */
     }
 
     .coordinates {
@@ -316,26 +365,45 @@ button:active {
     }
 
     .playback-controls {
-        bottom: 15px;
-        padding: 8px;
-        gap: 8px;
+        bottom: 10px;
+        padding: 3px 5px;
+        flex-wrap: nowrap; /* Důležité - zabránění zalomení na menších obrazovkách */
+        max-width: 99vw;
+        justify-content: space-between; /* Rozložit prvky na celou šířku */
+        background-color: rgba(255, 255, 255, 0.2);
     }
 
     .playback-controls button {
-        width: 46px;
-        height: 46px;
+        width: 28px; /* Ještě menší tlačítka na malých zařízeních */
+        height: 28px;
+        font-size: 12px;
+        padding: 0;
+        margin: 0;
     }
 
-    /* Reorganizace ovládacích prvků pro úzké obrazovky */
+    /* Optimalizace rozložení ovládacích prvků rychlosti */
     .playback-controls .speed-controls {
-        margin-top: 5px;
-        margin-left: 0;
-        padding-left: 0;
-        border-left: none;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        padding-top: 5px;
-        width: 100%;
+        margin-left: 2px;
+        padding-left: 2px;
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
         justify-content: center;
+    }
+
+    .playback-speed {
+        font-size: 11px;
+        line-height: 28px;
+        margin: 0 1px;
+    }
+
+    /* Odstranění přebytečných hodnot, které by mohly způsobit zalomení */
+    .playback-controls .speed-controls {
+        border-top: none;
+        margin-top: 0;
+        padding-top: 0;
+        width: auto;
     }
 }
 
@@ -357,7 +425,8 @@ button:active {
 
     .controls {
         top: 10px;
-        bottom: auto;
+        right: 70px; /* Posunout vpravo, aby nepřekrývalo playback controls v landscape módu */
+        flex-direction: row; /* V landscape módu vedle sebe */
     }
 
     .sliding-panel {

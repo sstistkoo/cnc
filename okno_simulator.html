@@ -25,16 +25,17 @@
     </div>
 
     <div class="playback-controls" id="playback-controls">
-        <button id="step-backward" title="Krok vzad" aria-label="Krok vzad">⏮</button>
-        <button id="play-pause" title="Přehrát/Pozastavit" aria-label="Přehrát nebo pozastavit">▶</button>
-        <button id="step-forward" title="Krok vpřed" aria-label="Krok vpřed">⏭</button>
-        <button id="stop" title="Stop" aria-label="Stop">⏹</button>
+        <button id="step-backward" title="Krok vzad" aria-label="Krok vzad" class="playback-button">⏮</button>
+        <button id="play-pause" title="Přehrát/Pozastavit" aria-label="Přehrát nebo pozastavit" class="playback-button">▶</button>
+        <button id="step-forward" title="Krok vpřed" aria-label="Krok vpřed" class="playback-button">⏭</button>
+        <button id="stop" title="Stop" aria-label="Stop" class="playback-button">⏹</button>
         <div class="speed-controls">
             <button id="speed-down" title="Snížit rychlost" aria-label="Snížit rychlost">−</button>
             <span class="playback-speed" id="speed-display">1×</span>
             <button id="speed-up" title="Zvýšit rychlost" aria-label="Zvýšit rychlost">+</button>
             <button id="speed-reset" title="Resetovat rychlost" aria-label="Resetovat rychlost">↺</button>
         </div>
+        <!-- Tlačítko pro minimalizaci se přidá dynamicky v JS mezi speed-reset a controls-toggle -->
         <button id="controls-toggle" title="Zobrazit/skrýt ovládání" aria-label="Zobrazit nebo skrýt ovládání">👁️</button>
         <button id="panel-toggle" title="Otevřít/zavřít panel" aria-label="Otevřít nebo zavřít panel">☰</button>
     </div>

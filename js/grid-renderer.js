@@ -496,23 +496,25 @@ function handleTouchStart(e) {
         touchStartX = lastX;
         touchStartY = lastY;
 
-        // Spustit časovač pro dlouhé podržení
+        // Spustit časovač pro dlouhé podržení pouze pokud se prst nehýbe
         longPressTimer = setTimeout(() => {
-            isLongPress = true;
-            // Uložit počáteční pozici křížku v souřadnicích mřížky
-            const gridX = (touchStartX - offsetX) / scale;
-            const gridY = (offsetY - touchStartY) / scale;
+            // Kontrola, zda se prst nepohnul během čekání
+            if (Math.abs(lastX - touchStartX) < 5 && Math.abs(lastY - touchStartY) < 5) {
+                isLongPress = true;
+                // Přidat vibraci pro zpětnou vazbu
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(50);
+                }
 
-            // Přidat vibraci pro zpětnou vazbu (pokud zařízení podporuje)
-            if (window.navigator && window.navigator.vibrate) {
-                window.navigator.vibrate(50);
+                const gridX = (touchStartX - offsetX) / scale;
+                const gridY = (offsetY - touchStartY) / scale;
+                showCrossMarker(touchStartX, touchStartY, gridX, gridY);
             }
-
-            showCrossMarker(touchStartX, touchStartY, gridX, gridY);
         }, LONG_PRESS_DURATION);
     } else if (e.touches.length === 2) {
         // Dva prsty - pinch zoom
         clearTimeout(longPressTimer);
+        isLongPress = false;
         isDragging = false;
         hideCrossMarker();
 
@@ -520,8 +522,21 @@ function handleTouchStart(e) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // Zaznamenat počáteční scale pro tento pinch
+        initialScale = scale;
+
+        // Získat střed pinch gesta
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        lastPinchCenter = { x: centerX, y: centerY };
     }
 }
+
+// Přidáme inicializaci pinch proměnných a opravíme deklaraci
+let lastPinchDistance = 0;
+let initialScale = 0;
+let lastPinchCenter = { x: 0, y: 0 };
 
 /**
  * Zpracuje událost pohybu prstu na obrazovce
@@ -533,12 +548,15 @@ function handleTouchMove(e) {
         const touchX = e.touches[0].clientX;
         const touchY = e.touches[0].clientY;
 
-        // Kontrola minimálního pohybu pro zabránění náhodným pohybům
-        const deltaX = touchX - lastX;
-        const deltaY = touchY - lastY;
-        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        // Vypočítat vzdálenost pohybu od počátečního dotyku
+        const moveDistanceX = Math.abs(touchX - touchStartX);
+        const moveDistanceY = Math.abs(touchY - touchStartY);
+        const moveDistance = Math.sqrt(moveDistanceX * moveDistanceX + moveDistanceY * moveDistanceY);
 
-        if (distance < 2) return; // Ignorovat velmi malé pohyby
+        // Pokud se posunul prst o více než 10px, zrušit časovač dlouhého podržení
+        if (moveDistance > 10 && !isLongPress) {
+            clearTimeout(longPressTimer);
+        }
 
         if (isCrossMarkerActive) {
             // Režim pohybu křížku
@@ -554,8 +572,6 @@ function handleTouchMove(e) {
             if (crossMarker) {
                 crossMarker.style.left = `${screenX}px`;
                 crossMarker.style.top = `${screenY}px`;
-
-                // Uložit aktuální souřadnice
                 crossMarker.dataset.gridX = gridX.toString();
                 crossMarker.dataset.gridY = gridY.toString();
 
@@ -568,57 +584,30 @@ function handleTouchMove(e) {
                     coordDisplay.style.fontWeight = 'bold';
                 }
             }
-        } else if (isLongPress) {
-            // Posunout mapu, ale zachovat křížek na stejné pozici v souřadnicích mřížky
-            offsetX += touchX - lastX;
-            offsetY += touchY - lastY;
-
-            // Aktualizovat pozici křížku, aby zůstal na stejné pozici v souřadnicích mřížky
-            const crossMarker = document.getElementById('cross-marker');
-            if (crossMarker && crossMarker.dataset.gridX && crossMarker.dataset.gridY) {
-                const gridX = parseFloat(crossMarker.dataset.gridX);
-                const gridY = parseFloat(crossMarker.dataset.gridY);
-
-                // Vypočítat novou pozici křížku na obrazovce
-                const newScreenX = offsetX + gridX * scale;
-                const newScreenY = offsetY - gridY * scale;
-
-                // Aktualizovat pozici křížku
-                crossMarker.style.left = `${newScreenX}px`;
-                crossMarker.style.top = `${newScreenY - 80}px`; // Výškový offset 80px nad bodem
-
-                // Aktualizovat zobrazení souřadnic křížku
-                const coordDisplay = document.getElementById('coord-display');
-                if (coordDisplay) {
-                    coordDisplay.textContent = `X: ${formatCoordinate(gridX)}, Z: ${formatCoordinate(gridY)}`;
-                    coordDisplay.style.fontWeight = 'bold';
-                }
-            }
         } else {
-            // Aktualizovat souřadnice pro zobrazení
-            updateCoordinatesDisplay(touchX, touchY);
+            // Standardní posun mapy, pokud se nejedná o dlouhé podržení
+            if (!isLongPress) {
+                // Aktualizovat souřadnice pro zobrazení
+                updateCoordinatesDisplay(touchX, touchY);
 
-            // Zrušit dlouhé podržení, pokud se prst pohne příliš daleko
-            if (Math.abs(touchX - touchStartX) > 10 || Math.abs(touchY - touchStartY) > 10) {
-                clearTimeout(longPressTimer);
-                isLongPress = false;
-                hideCrossMarker();
+                // Posunout mřížku
+                offsetX += touchX - lastX;
+                offsetY += touchY - lastY;
+
+                // Překreslit mřížku
+                drawGrid();
             }
-
-            // Posunout mřížku
-            offsetX += touchX - lastX;
-            offsetY += touchY - lastY;
         }
 
+        // Aktualizovat poslední pozici
         lastX = touchX;
         lastY = touchY;
-
-        drawGrid();
     } else if (e.touches.length === 2) {
         // Optimalizovaný pinch-to-zoom
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
 
+        // Vypočítat vzdálenost mezi prsty
         const dx = touch1.clientX - touch2.clientX;
         const dy = touch1.clientY - touch2.clientY;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -627,17 +616,24 @@ function handleTouchMove(e) {
         const centerX = (touch1.clientX + touch2.clientX) / 2;
         const centerY = (touch1.clientY + touch2.clientY) / 2;
 
-        // Změnit měřítko podle změny vzdálenosti
+        // Pokud máme počáteční vzdálenost, můžeme spočítat zoom
         if (lastPinchDistance > 0) {
-            const zoomFactor = distance / lastPinchDistance;
+            // Určit změnu měřítka
+            const zoomRatio = distance / lastPinchDistance;
 
             // Použít plynulejší změnu měřítka pro pinch-to-zoom
-            const smoothZoomFactor = 1 + (zoomFactor - 1) * 0.3;
+            const smoothZoomFactor = 1 + (zoomRatio - 1) * 0.7;
 
+            // Vypočítat nové měřítko
+            const newScale = initialScale * zoomRatio;
+
+            // Aplikovat zoom na centrum mezi prsty
             zoomAt(centerX, centerY, smoothZoomFactor);
         }
 
+        // Aktualizovat hodnoty pro příští událost
         lastPinchDistance = distance;
+        lastPinchCenter = { x: centerX, y: centerY };
     }
 }
 
@@ -645,13 +641,28 @@ function handleTouchMove(e) {
  * Zpracuje událost zvednutí prstu z obrazovky
  */
 function handleTouchEnd(e) {
+    // Zrušit časovač pro dlouhé podržení
+    clearTimeout(longPressTimer);
+
+    // Pokud všechny prsty byly zvednuty
     if (e.touches.length === 0) {
         isDragging = false;
-        clearTimeout(longPressTimer);
 
-        if (isLongPress) {
-            hideCrossMarker();
-        }
+        // Neukončovat režim křížku hned při zvednutí prstu
+        // Tím umožníme uživateli kliknout mimo křížek pro jeho zrušení
+
+        // Resetovat pinch proměnné
+        lastPinchDistance = 0;
+        initialScale = 0;
+    } else if (e.touches.length === 1) {
+        // Pokud zůstal jeden prst (při ukončení pinch-to-zoom)
+        isDragging = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+
+        // Resetovat pinch proměnné
+        lastPinchDistance = 0;
+        initialScale = 0;
     }
 }
 

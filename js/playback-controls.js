@@ -6,12 +6,18 @@
 // Globální proměnné
 let playbackSpeed = 1;
 let callbacks = {};
+// Změněno výchozí hodnotu na true - při načtení bude přehrávač minimalizovaný
+let isMinimized = true;
 
 /**
  * Nastaví ovládací prvky přehrávače
  * @param {Object} options - Callbacky pro různé akce přehrávače
  */
 export function setupPlaybackControls(options = {}) {
+    // Nastavit callbacky
+    callbacks = options;
+
+    // Získat reference na ovládací prvky
     const playPauseBtn = document.getElementById('play-pause');
     const stopBtn = document.getElementById('stop');
     const stepForwardBtn = document.getElementById('step-forward');
@@ -21,6 +27,30 @@ export function setupPlaybackControls(options = {}) {
     const speedResetBtn = document.getElementById('speed-reset');
     const speedDisplay = document.getElementById('speed-display');
     const controlsToggleBtn = document.getElementById('controls-toggle');
+    const panelToggleBtn = document.getElementById('panel-toggle');
+    const playbackControls = document.getElementById('playback-controls');
+
+    // Přidat třídu pro standardní přehrávací tlačítka
+    if (playPauseBtn) playPauseBtn.classList.add('playback-button');
+    if (stopBtn) stopBtn.classList.add('playback-button');
+    if (stepForwardBtn) stepForwardBtn.classList.add('playback-button');
+    if (stepBackwardBtn) stepBackwardBtn.classList.add('playback-button');
+
+    // Přidat nové tlačítko pro minimalizaci mezi reset rychlosti a toggle ovládání
+    const minimizeButton = document.createElement('button');
+    minimizeButton.id = 'toggle-minimize';
+    minimizeButton.className = 'toggle-minimize';
+    minimizeButton.title = 'Zobrazit/skrýt přehrávač';
+    minimizeButton.setAttribute('aria-label', 'Zobrazit nebo skrýt přehrávač');
+    minimizeButton.innerHTML = '&#x1F50E;'; // Unicode ikona "lupa" (zobrazit)
+
+    // Vložit tlačítko mezi reset rychlosti a toggle ovládání
+    if (controlsToggleBtn && controlsToggleBtn.parentNode) {
+        controlsToggleBtn.parentNode.insertBefore(minimizeButton, controlsToggleBtn);
+    } else {
+        // Záložní řešení, pokud nelze vložit mezi
+        playbackControls.appendChild(minimizeButton);
+    }
 
     let speed = 1;
 
@@ -85,7 +115,36 @@ export function setupPlaybackControls(options = {}) {
         });
     }
 
+    // Přidat event listener pro tlačítko minimalizace
+    if (minimizeButton) {
+        minimizeButton.addEventListener('click', toggleMinimizePlayback);
+    }
+
+    // Nastavit výchozí stav přehrávače - minimalizovaný
+    if (playbackControls) {
+        playbackControls.classList.toggle('minimized', isMinimized);
+    }
+
     console.log('Playback controls initialized');
+}
+
+/**
+ * Přepíná minimalizaci přehrávače
+ */
+function toggleMinimizePlayback() {
+    const playbackControls = document.getElementById('playback-controls');
+    const minimizeButton = document.getElementById('toggle-minimize');
+
+    if (!playbackControls || !minimizeButton) return;
+
+    isMinimized = !isMinimized;
+
+    // Přepnout třídu pro minimalizaci
+    playbackControls.classList.toggle('minimized', isMinimized);
+
+    // Změnit ikonu tlačítka
+    minimizeButton.innerHTML = isMinimized ? '&#x1F50E;' : '&#x1F4A0;'; // Lupa nebo skrýt
+    minimizeButton.title = isMinimized ? 'Zobrazit přehrávač' : 'Skrýt přehrávač';
 }
 
 /**
@@ -103,7 +162,7 @@ function changePlaybackSpeed(newSpeed) {
     }
 
     // Zavolat callback
-    callbacks.onSpeedChange(playbackSpeed);
+    callbacks.onSpeedChange?.(playbackSpeed);
 }
 
 /**
@@ -122,5 +181,13 @@ export function updatePlaybackState(state) {
  * @returns {number} Aktuální rychlost přehrávání
  */
 export function getPlaybackSpeed() {
-    return 1; // Výchozí rychlost
+    return playbackSpeed;
+}
+
+/**
+ * Vrací informaci, zda je přehrávač minimalizován
+ * @returns {boolean} True, pokud je přehrávač minimalizován
+ */
+export function isPlaybackMinimized() {
+    return isMinimized;
 }
