@@ -663,17 +663,16 @@
             hideCrossMarker();
         });
         
-        // Přidat události pro dotykové ovládání
+        // Události pro dotykové ovládání - kompletně přepracované
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault(); // Zabránit výchozímu chování prohlížeče
             
             // Detekce pinch gesta (dva prsty)
             if (e.touches.length === 2) {
-                // Zrušit podržení a tažení
-                clearHoldTimer();
-                isDragging = false;
+                // Vždy skrýt křížek při použití dvou prstů
                 isHolding = false;
                 crossMarker.style.display = 'none';
+                clearHoldTimer();
                 
                 // Uložit počáteční vzdálenost mezi prsty
                 initialPinchDistance = getPinchDistance(e.touches);
@@ -698,11 +697,10 @@
             
             // Pinch-to-zoom (dva prsty)
             if (e.touches.length === 2) {
-                // Zrušit podržení a tažení
-                clearHoldTimer();
-                isDragging = false;
+                // Vždy skrýt křížek při použití dvou prstů
                 isHolding = false;
                 crossMarker.style.display = 'none';
+                clearHoldTimer();
                 
                 // Vypočítat aktuální vzdálenost mezi prsty
                 const currentDistance = getPinchDistance(e.touches);
@@ -747,10 +745,8 @@
                 const deltaY = e.touches[0].clientY - lastY;
                 
                 // Pokud se uživatel pohybuje, zrušit odpočet pro podržení
-                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                    if (!isHolding) {
-                        clearHoldTimer();
-                    }
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5 && !isHolding) {
+                    clearHoldTimer();
                 }
                 
                 if (isHolding) {
@@ -767,16 +763,13 @@
             }
             
             // Aktualizovat zobrazení souřadnic
-            if (e.touches.length > 0) {
+            if (e.touches.length > 0 && !isHolding) {
                 const rawX = (e.touches[0].clientX - offsetX) / scale;
                 const rawY = -(e.touches[0].clientY - offsetY) / scale;
                 const gridX = parseFloat(rawX.toFixed(3)).toString();
                 const gridY = parseFloat(rawY.toFixed(3)).toString();
                 
-                // Zobrazit souřadnice pouze pokud není aktivní křížek
-                if (!isHolding) {
-                    coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
-                }
+                coordDisplay.textContent = `X: ${gridX}, Z: ${gridY}`;
             }
         });
         
@@ -785,15 +778,12 @@
             // Reset pinch-to-zoom variables when touch ends
             initialPinchDistance = 0;
             
-            // Pokud není žádný prst na obrazovce, resetovat všechna stavy
+            // Pokud není žádný prst na obrazovce, resetovat všechny stavy
             if (e.touches.length === 0) {
                 isDragging = false;
-                
-                // Pokud nebyl křížek aktivován dlouhým podržením, skrýt ho
-                if (!isHolding) {
-                    clearHoldTimer();
-                    crossMarker.style.display = 'none';
-                }
+                isHolding = false;
+                clearHoldTimer();
+                crossMarker.style.display = 'none';
             }
             
             // Pokud zůstal jeden prst, aktualizovat pozici
@@ -801,11 +791,23 @@
                 lastX = e.touches[0].clientX;
                 lastY = e.touches[0].clientY;
                 
-                // Pokud je aktivní podržení, aktualizovat pozici křížku
-                if (isHolding) {
-                    updateCrossMarkerPosition(e.touches[0].clientX, e.touches[0].clientY);
-                }
+                // Resetovat stav držení při změně počtu prstů
+                isHolding = false;
+                clearHoldTimer();
+                crossMarker.style.display = 'none';
+                
+                // Začít nový odpočet pro podržení
+                startHoldTimer(e.touches[0].clientX, e.touches[0].clientY);
             }
+        });
+        
+        // Přidat touchcancel event pro úplnost
+        canvas.addEventListener('touchcancel', () => {
+            isDragging = false;
+            isHolding = false;
+            clearHoldTimer();
+            crossMarker.style.display = 'none';
+            initialPinchDistance = 0;
         });
         
         // Funkce pro výpočet vzdálenosti mezi dvěma dotyky
@@ -823,22 +825,14 @@
             };
         }
         
-        // Přidat touchcancel event pro úplnost
-        canvas.addEventListener('touchcancel', () => {
-            isDragging = false;
-            isHolding = false;
-            clearHoldTimer();
-            crossMarker.style.display = 'none';
-            initialPinchDistance = 0;
-        });
-        
         // Funkce pro práci s křížkem při podržení
         function startHoldTimer(x, y) {
             clearHoldTimer(); // Vyčistit existující časovač
             
             holdTimer = setTimeout(() => {
                 isHolding = true;
-                showCrossMarker(x, y);
+                crossMarker.style.display = 'block';
+                updateCrossMarkerPosition(x, y);
             }, holdDuration);
         }
         
@@ -849,12 +843,8 @@
             }
         }
         
-        function showCrossMarker(x, y) {
-            crossMarker.style.display = 'block';
-            updateCrossMarkerPosition(x, y);
-        }
-        
         function hideCrossMarker() {
+            // Vždy resetovat stav držení a skrýt křížek
             isHolding = false;
             crossMarker.style.display = 'none';
         }
