@@ -43,6 +43,11 @@
             flex-direction: column;
             align-items: center;
         }
+        
+        .controls.hidden {
+            display: none;
+        }
+        
         .controls.panel-open {
             transform: translateY(calc(-1 * var(--panel-height, 50vh) + 240px));
         }
@@ -284,6 +289,25 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+        
+        /* Toggle button for controls */
+        .controls-toggle {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 1003;
+            cursor: pointer;
+            font-size: 14px;
+            border: 1px solid #ccc;
+        }
+        
+        .controls-toggle:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -297,6 +321,7 @@
         <div class="coordinates" id="coord-display">X: 0, Z: 0</div>
         <div class="cross-marker" id="cross-marker"></div>
         <div id="debug-display" style="position: fixed; top: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 5px; font-size: 12px; display: none;"></div>
+        <button class="controls-toggle" id="controls-toggle">Zobrazit ovládání</button>
     </div>
 
     <div class="playback-controls" id="playback-controls">
@@ -363,8 +388,8 @@
             scale = canvas.width / targetRightX; // Měřítko, aby se zobrazil rozsah 0-700
 
             // Umístit počátek souřadnic do levého dolního rohu s offsetem
-            offsetX = 50;  // 50px od levého okraje
-            offsetY = canvas.height - 50;  // 50px od dolního okraje
+            offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
+            offsetY = canvas.height - 75;  // Increased by 1.5x (from 50px to 75px) from bottom edge
 
             drawGrid();
         });
@@ -581,8 +606,8 @@
             scale = canvas.width / targetRightX;
 
             // Resetovat do levého dolního rohu (místo do středu)
-            offsetX = 50;
-            offsetY = canvas.height - 50;
+            offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
+            offsetY = canvas.height - 75;  // Increased by 1.5x (from 50px to 75px) from bottom edge
             drawGrid();
         });
 
@@ -995,6 +1020,17 @@
         speedResetBtn.addEventListener('click', () => {
             playbackSpeed = 1;
             speedDisplay.textContent = '1×';
+        });
+
+        // Controls toggle functionality
+        const controlsToggleBtn = document.getElementById('controls-toggle');
+        const controlsPanel = document.querySelector('.controls');
+        let controlsVisible = true;
+        
+        controlsToggleBtn.addEventListener('click', () => {
+            controlsVisible = !controlsVisible;
+            controlsPanel.classList.toggle('hidden', !controlsVisible);
+            controlsToggleBtn.textContent = controlsVisible ? 'Skrýt ovládání' : 'Zobrazit ovládání';
         });
     </script>
 </body>
