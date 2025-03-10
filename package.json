@@ -1,0 +1,12 @@
+{
+    "name": "cnc-editor",
+    "version": "1.0.0",
+    "description": "CNC Editor and Simulator",
+    "scripts": {
+        "start": "live-server --port=5500",
+        "dev": "live-server --port=5500 --open=index.html"
+    },
+    "devDependencies": {
+        "live-server": "^1.2.2"
+    }
+}

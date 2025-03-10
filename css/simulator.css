@@ -1,0 +1,283 @@
+/* Hlavní styly pro CNC simulátor */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    touch-action: none; /* Disable browser's default touch actions */
+}
+
+#canvas-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background-color: white;
+    overflow: hidden;
+    transition: transform 0.3s ease-in-out;
+}
+
+#canvas-container.panel-open {
+    transform: translateY(calc(-1 * var(--panel-height, 50vh)));
+}
+
+#grid-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    background-color: white;
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    touch-action: none; /* Zakáže základní dotykové chování, abychom mohli implementovat vlastní */
+}
+
+button {
+    cursor: pointer;
+    user-select: none;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+.controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 5px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: transform 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.controls.hidden {
+    display: none;
+}
+
+.controls.panel-open {
+    transform: translateY(calc(-1 * var(--panel-height, 50vh) + 240px));
+}
+
+.controls button {
+    margin: 2px;
+    width: 40px;
+    height: 30px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.coordinates {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    z-index: 1000;
+    font-size: 14px; /* Větší text pro lepší čitelnost na mobilních zařízeních */
+}
+
+/* Styly pro vysouvací panel */
+.sliding-panel {
+    position: fixed;
+    bottom: -50vh; /* Změněno z pevné hodnoty na relativní */
+    left: 0;
+    width: 100%; /* Panel přes celou šířku */
+    height: 50vh; /* Výchozí výška je 50% výšky obrazovky */
+    background-color: rgba(255, 255, 255, 0.5); /* Zvýšená průhlednost na 50% */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+.sliding-panel.open {
+    transform: translateY(-100%);
+}
+
+.panel-content {
+    padding: 30px 20px 20px 20px; /* Zvětšit horní padding pro táhlo */
+    height: calc(100% - 50px);
+    overflow-y: auto;
+}
+
+/* Přidat táhlo pro resize */
+.panel-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: #f0f0f0;
+    cursor: row-resize;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Vizuální indikátor pro táhlo */
+.panel-handle::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 4px;
+    background: #ccc;
+    border-radius: 4px;
+}
+
+/* Přidat nový styl pro playback controls */
+.playback-controls {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.5); /* Zvýšená průhlednost na 50% */
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px); /* Rozmazané pozadí */
+    -webkit-backdrop-filter: blur(5px); /* Pro Safari */
+    z-index: 1002;
+    display: flex;
+    gap: 8px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.playback-controls.panel-open {
+    transform: translate(-50%, calc(-1 * var(--panel-height, 50vh)));
+}
+
+.playback-controls button {
+    width: 36px;
+    height: 36px;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.playback-controls button:hover {
+    background-color: #f0f0f0;
+}
+
+.playback-controls .speed-controls {
+    display: flex;
+    gap: 4px;
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.playback-speed {
+    font-size: 14px;
+    line-height: 36px;
+    margin: 0 8px;
+    white-space: nowrap;
+    color: rgba(0, 0, 0, 0.8);
+}
+
+/* Styl pro křížek při podržení */
+.cross-marker {
+    position: absolute;
+    pointer-events: none; /* Aby křížek nebránil interakci s canvasem */
+    z-index: 1005;
+    display: none;
+    transform: translate(-50%, -50%); /* Vycentrování křížku */
+}
+
+.cross-marker::before,
+.cross-marker::after {
+    content: '';
+    position: absolute;
+    background-color: rgba(255, 0, 0, 0.8);
+}
+
+.cross-marker::before {
+    width: 20px;
+    height: 2px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cross-marker::after {
+    width: 2px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Přizpůsobení pro mobilní zařízení */
+@media (max-width: 768px) {
+    .controls {
+        top: 100px; /* Ještě výše na mobilních zařízeních */
+        right: 15px;
+        padding: 8px;
+    }
+    .controls button {
+        padding: 12px 16px; /* Ještě větší tlačítka na malých obrazovkách */
+        margin: 4px;
+        width: 50px; /* Větší tlačítka na dotykovém zařízení */
+        height: 50px;
+        font-size: 24px;
+    }
+    .coordinates {
+        font-size: 16px; /* Větší text na mobilních zařízeních */
+    }
+    .sliding-panel {
+        width: 100%;
+        right: 0;
+    }
+    .playback-controls {
+        bottom: 60px;
+        padding: 6px;
+        gap: 4px;
+        width: 90%; /* Omezení šířky na mobilech */
+        max-width: 400px; /* Maximální šířka */
+    }
+    .playback-controls button {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    .playback-controls .speed-controls {
+        margin-left: 8px;
+        padding-left: 8px;
+    }
+    .playback-speed {
+        font-size: 12px;
+        line-height: 32px;
+        margin: 0 4px;
+    }
+}
+
+/* Orientace na šířku pro mobilní zařízení */
+@media (max-height: 500px) {
+    .playback-controls {
+        bottom: auto;
+        top: 10px;
+    }
+}

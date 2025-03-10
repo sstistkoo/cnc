@@ -374,6 +374,7 @@
                 </div>
                 <button id="ppButton" class="square-button">PP</button>
                 <input type="file" id="fileInput" class="file-input" accept=".mpf,.spf,.nc,.cnc" multiple />
+                <button id="simulatorButton" class="square-button">▶️</button>
             </div>
         </div>
 
@@ -438,8 +439,10 @@
             requestAnimationFrame(updateHeights);
         });
 
+        resizeObserver.observe(document.body);
+        resizeObserver.observe(topPanel);
+        resizeObserver.observe(middleWindow);
         resizeObserver.observe(bottomEditor);
-        resizeObserver.observe(topEditor);
 
         editorHandle.addEventListener('click', (e) => {
             if (isDragging) return;
@@ -654,6 +657,47 @@
         });
 
         window.addEventListener('resize', updateHeights);
+
+        // Funkce pro otevření simulátoru v iframe
+        function openSimulator() {
+            // Vytvoříme iframe pro simulátor, pokud ještě neexistuje
+            let simulatorFrame = document.getElementById('simulatorFrame');
+            if (!simulatorFrame) {
+                simulatorFrame = document.createElement('iframe');
+                simulatorFrame.id = 'simulatorFrame';
+                simulatorFrame.style.width = '100%';
+                simulatorFrame.style.height = '100%';
+                simulatorFrame.style.border = 'none';
+                simulatorFrame.src = 'okno_simulator.html';
+                
+                // Vyčistíme obsah middle-window a vložíme iframe
+                const middleContent = document.querySelector('.middle-content');
+                middleContent.innerHTML = '';
+                middleContent.appendChild(simulatorFrame);
+                
+                // Přidáme posluchač zpráv z iframe
+                window.addEventListener('message', (event) => {
+                    // Zde můžeme zpracovat zprávy ze simulátoru, pokud bude potřeba
+                    console.log('Zpráva ze simulátoru:', event.data);
+                });
+            }
+            
+            // Zobrazíme middle-window, pokud je skryté
+            middleWindow.style.height = '40%';
+            middleContent.classList.remove('hidden');
+            
+            // Odešleme CNC kód do simulátoru
+            setTimeout(() => {
+                const cncCode = editorTextarea.value;
+                simulatorFrame.contentWindow.postMessage({
+                    type: 'loadCNCCode',
+                    code: cncCode
+                }, '*');
+            }, 500); // Počkáme 500ms, aby se iframe stačil načíst
+        }
+
+        const simulatorButton = document.getElementById('simulatorButton');
+        simulatorButton.onclick = openSimulator;
 
         updateHeights();
     </script>
