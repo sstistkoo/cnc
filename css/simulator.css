@@ -92,19 +92,22 @@ button:active {
 }
 
 .coordinates {
-    position: absolute;
-    top: 25px; /* Posunuto o 10px níž z původních 15px */
-    left: 15px;
-    background-color: rgba(255, 255, 255, 0.9);
+    position: fixed !important;  /* !important pro přepsání jakýchkoliv jiných stylů */
+    bottom: 40px !important;     /* Změna z top na bottom s offsetem 40px od spodního okraje */
+    left: 15px !important;       /* !important pro zajištění, že pozice nebude přepsána */
+    background-color: transparent; /* Odstraněno pozadí */
     padding: 12px 15px;
     border-radius: 8px;
     font-family: monospace;
-    z-index: 1000;
-    font-size: 18px; /* Zvětšený font */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 2000;               /* Ještě vyšší z-index */
+    font-size: 27px;             /* Zvětšeno o 50% z původních 18px */
     display: flex;
-    flex-direction: column; /* Souřadnice pod sebou */
-    line-height: 1.4; /* Větší řádkování */
+    flex-direction: column;      /* Souřadnice pod sebou */
+    line-height: 1.4;            /* Větší řádkování */
+    transform: none !important;  /* Zamezit jakémukoliv transformování */
+    transition: none !important; /* Zamezit jakýmkoliv přechodům */
+    pointer-events: none;        /* Aby souřadnice nepřekážely klikání na elementy pod nimi */
+    text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white; /* Přidání stínu pro lepší čitelnost bez pozadí */
 }
 
 /* Nový styl pro jednotlivé souřadnice */
@@ -293,32 +296,36 @@ button:active {
 
 /* Přidáme styly pro popisky os */
 .axis-label {
-    position: absolute;
+    position: fixed !important;  /* !important pro přepsání jakýchkoliv jiných stylů */
     font-family: Arial, sans-serif;
     font-size: 14px;
     font-weight: bold;
     color: #333;
     pointer-events: none; /* Aby nereagoval na eventy myši */
-    z-index: 999;
+    z-index: 1019;               /* Vysoký z-index, ale nižší než souřadnice */
+    transform: none !important;  /* Zamezit jakémukoliv transformování */
+    transition: none !important; /* Zamezit jakýmkoliv přechodům */
 }
 
 .axis-label.x-axis {
-    bottom: 150px;
-    right: 15px;
+    bottom: 150px !important;    /* !important pro zajištění, že pozice nebude přepsána */
+    right: 15px !important;      /* !important pro zajištění, že pozice nebude přepsána */
 }
 
 .axis-label.z-axis {
-    top: 15px;
-    left: 20px;
+    top: 15px !important;        /* !important pro zajištění, že pozice nebude přepsána */
+    left: 20px !important;       /* !important pro zajištění, že pozice nebude přepsána */
 }
 
 /* Šipky u os */
 .axis-arrow {
-    position: absolute;
+    position: fixed !important;  /* !important pro přepsání jakýchkoliv jiných stylů */
     width: 0;
     height: 0;
     pointer-events: none;
-    z-index: 999;
+    z-index: 1019;               /* Vysoký z-index, ale nižší než souřadnice */
+    transform: none !important;  /* Zamezit jakémukoliv transformování */
+    transition: none !important; /* Zamezit jakýmkoliv přechodům */
 }
 
 /* Šipka X-ové osy (vpravo) */
@@ -326,8 +333,8 @@ button:active {
     border-top: 6px solid transparent;
     border-left: 12px solid #333;
     border-bottom: 6px solid transparent;
-    bottom: 149px;
-    right: 5px;
+    bottom: 149px !important;    /* !important pro zajištění, že pozice nebude přepsána */
+    right: 5px !important;       /* !important pro zajištění, že pozice nebude přepsána */
 }
 
 /* Šipka Z-ové osy (nahoru) */
@@ -335,8 +342,8 @@ button:active {
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
     border-bottom: 12px solid #333;
-    top: 5px;
-    left: 14px;
+    top: 5px !important;         /* !important pro zajištění, že pozice nebude přepsána */
+    left: 14px !important;       /* !important pro zajištění, že pozice nebude přepsána */
 }
 
 /* Přizpůsobení pro mobilní zařízení */
@@ -358,11 +365,11 @@ button:active {
     }
 
     .coordinates {
-        top: 20px; /* Posunuto o 10px níž z původních 10px */
+        bottom: 60px !important; /* Zvětšený bottom offset pro mobilní zařízení */
         left: 10px;
-        font-size: 16px;
+        font-size: 20px;        /* Upravena velikost fontu pro mobilní */
         padding: 10px 12px;
-        max-width: 110px; /* Omezit maximální šířku */
+        max-width: 110px;       /* Omezit maximální šířku */
     }
     .sliding-panel {
         width: 100%;
@@ -504,7 +511,8 @@ button:active {
     }
 
     .coordinates {
-        top: 70px; /* Posunuto o 10px níž z původních 60px */
+        bottom: 20px !important; /* Menší bottom offset pro landscape mód */
+        left: 20px !important;
     }
 
     .sliding-panel {

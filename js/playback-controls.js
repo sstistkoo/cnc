@@ -120,6 +120,22 @@ export function setupPlaybackControls(options = {}) {
         minimizeButton.addEventListener('click', toggleMinimizePlayback);
     }
 
+    // Přidat event listener pro panel-toggle tlačítko, které zajistí že souřadnice zůstanou viditelné
+    if (panelToggleBtn) {
+        panelToggleBtn.addEventListener('click', () => {
+            // Kromě standardního přepínání panelu, zajistíme viditelnost souřadnic
+            setTimeout(() => {
+                // Zajistíme, že souřadnice a popisky os zůstanou pevně na místě
+                document.querySelectorAll('.coordinates, .axis-label, .axis-arrow').forEach(el => {
+                    el.style.position = 'fixed';
+                    el.style.transform = 'none';
+                    el.style.transition = 'none';
+                    el.style.zIndex = '2000'; // Vyšší z-index než panel
+                });
+            }, 10); // Krátké zpoždění pro zajištění, že se stihne provést po togglePanel
+        });
+    }
+
     // Nastavit výchozí stav přehrávače - minimalizovaný
     if (playbackControls) {
         playbackControls.classList.toggle('minimized', isMinimized);

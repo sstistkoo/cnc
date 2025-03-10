@@ -67,6 +67,22 @@ function initializeGrid() {
     // Vykreslit mřížku
     console.log('Drawing grid...', { width: canvas.width, height: canvas.height });
     drawGrid();
+
+    // Přidáme listener pro obsluhu změn souřadnic při manipulaci s panelem
+    document.addEventListener('panel-toggle', () => {
+        // Zajistíme, že souřadnice a popisky os zůstanou pevně na místě
+        setTimeout(() => {
+            const coordinates = document.getElementById('coord-display');
+            if (coordinates) {
+                coordinates.style.position = 'fixed';
+                coordinates.style.top = '25px';
+                coordinates.style.left = '15px';
+                coordinates.style.transform = 'none';
+                coordinates.style.transition = 'none';
+                coordinates.style.zIndex = '2000';
+            }
+        }, 50);
+    });
 }
 
 /**
@@ -359,6 +375,15 @@ function updateCoordinatesDisplay(x, y, fixed = false) {
         // Zobrazit souřadnice každou na vlastním řádku
         coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedY}</div>`;
         coordDisplay.style.fontWeight = fixed ? 'bold' : 'normal';
+
+        // Zajistit, že souřadnice jsou vždy na správném místě s pevnou pozicí
+        coordDisplay.style.position = 'fixed';
+        coordDisplay.style.bottom = '40px'; // Nastavit na bottom místo top
+        coordDisplay.style.left = '15px';
+        coordDisplay.style.top = 'auto'; // Zrušit top pozici
+        coordDisplay.style.transform = 'none';
+        coordDisplay.style.transition = 'none';
+        coordDisplay.style.zIndex = '2000';
     }
 }
 
@@ -753,6 +778,12 @@ function showCrossMarker(screenX, screenY, gridX, gridY) {
             // Aktualizujeme každou souřadnici na vlastním řádku
             coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedZ}</div>`;
             coordDisplay.style.fontWeight = 'bold';
+
+            // Zajistit správnou pozici při zobrazení křížku
+            coordDisplay.style.position = 'fixed';
+            coordDisplay.style.bottom = '40px';
+            coordDisplay.style.left = '15px';
+            coordDisplay.style.top = 'auto'; // Zrušit top pozici
         }
 
         // Aktivovat režim pohybu křížku
@@ -786,15 +817,28 @@ function formatCoordinate(value) {
  * Aktualizuje pozice statických popisků os
  */
 function updateAxisLabelsPosition() {
-    const xAxisLabel = document.querySelector('.axis-label.x-axis');
-    const zAxisLabel = document.querySelector('.axis-label.z-axis');
-    const xAxisArrow = document.querySelector('.axis-arrow.x-axis');
-    const zAxisArrow = document.querySelector('.axis-arrow.z-axis');
+    // Pozice popisků os jsou nyní pevně nastaveny v CSS
+    // a nebudou se měnit při otevření/zavření panelu
+    // Proto tato funkce nyní nic nedělá
 
-    if (xAxisLabel && zAxisLabel && xAxisArrow && zAxisArrow) {
-        // Pozice Z osy je nastavena přes CSS
-        // Pozice X osy je nastavena přes CSS
-    }
+    // Původní kód odstraněn:
+    // const xAxisLabel = document.querySelector('.axis-label.x-axis');
+    // const zAxisLabel = document.querySelector('.axis-label.z-axis');
+    // const xAxisArrow = document.querySelector('.axis-arrow.x-axis');
+    // const zAxisArrow = document.querySelector('.axis-arrow.z-axis');
+    // const slidingPanel = document.getElementById('sliding-panel');
+    // const isPanelOpen = slidingPanel && slidingPanel.classList.contains('open');
+    //
+    // if (xAxisLabel && zAxisLabel && xAxisArrow && zAxisArrow) {
+    //     if (isPanelOpen) {
+    //         const panelHeight = slidingPanel.offsetHeight;
+    //         xAxisLabel.style.bottom = `${150 + panelHeight}px`;
+    //         xAxisArrow.style.bottom = `${149 + panelHeight}px`;
+    //     } else {
+    //         xAxisLabel.style.bottom = '150px';
+    //         xAxisArrow.style.bottom = '149px';
+    //     }
+    // }
 }
 
 // Smazat starý export a nahradit jediným správným exportem
