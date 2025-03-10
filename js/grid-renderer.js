@@ -61,6 +61,9 @@ function initializeGrid() {
     // Přidat event listenery
     setupEventListeners();
 
+    // Aktualizovat pozice popisků os při inicializaci
+    updateAxisLabelsPosition();
+
     // Vykreslit mřížku
     console.log('Drawing grid...', { width: canvas.width, height: canvas.height });
     drawGrid();
@@ -134,6 +137,9 @@ function resizeCanvas() {
         // Horizontální orientace - menší odsazení od spodního okraje
         offsetY = canvas.height - 100;
     }
+
+    // Aktualizovat pozice popisků os při změně velikosti
+    updateAxisLabelsPosition();
 
     drawGrid();
 }
@@ -215,12 +221,14 @@ function drawAxes() {
             ctx.lineTo(canvas.width, offsetY);
         }
 
-        // Y-osa
+        // Z-osa (vertikální)
         if (isOriginXVisible) {
             ctx.moveTo(offsetX, 0);
             ctx.lineTo(offsetX, canvas.height);
         }
         ctx.stroke();
+
+        // Odstraníme přímé označení os na křížích, ponecháme pouze statické HTML elementy
     }
 }
 
@@ -317,6 +325,8 @@ function drawAxisLabels(startX, endX, startY, endY) {
     if (isOriginXVisible && isOriginYVisible) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fillText('0', offsetX - 15, offsetY + 15);
+
+        // Odstraníme další popisky os u počátku, ponecháme pouze statické HTML elementy
     }
 }
 
@@ -339,7 +349,6 @@ function updateCoordinatesDisplay(x, y, fixed = false) {
             if (Math.abs(value) < 0.001) return '0';
 
             // Pro ostatní hodnoty - zobrazit až 3 desetinná místa bez zbytečných nul
-            // např. 10.000 -> 10, 10.100 -> 10.1, 10.123 -> 10.123
             return value.toFixed(3).replace(/\.?0+$/, '');
         };
 
@@ -347,8 +356,8 @@ function updateCoordinatesDisplay(x, y, fixed = false) {
         const formattedX = formatValue(gridX);
         const formattedY = formatValue(gridY);
 
-        // Zobrazit souřadnice
-        coordDisplay.textContent = `X: ${formattedX}, Z: ${formattedY}`;
+        // Zobrazit souřadnice každou na vlastním řádku
+        coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedY}</div>`;
         coordDisplay.style.fontWeight = fixed ? 'bold' : 'normal';
     }
 }
@@ -431,7 +440,9 @@ function handleMouseMove(e) {
             if (coordDisplay) {
                 const formattedX = formatCoordinate(gridX);
                 const formattedZ = formatCoordinate(gridY);
-                coordDisplay.textContent = `X: ${formattedX}, Z: ${formattedZ}`;
+
+                // Aktualizujeme každou souřadnici na vlastním řádku
+                coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedZ}</div>`;
                 coordDisplay.style.fontWeight = 'bold';
             }
         }
@@ -474,7 +485,6 @@ function handleMouseUp() {
  */
 function handleWheel(e) {
     e.preventDefault();
-
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     zoomAt(e.clientX, e.clientY, zoomFactor);
 }
@@ -490,7 +500,6 @@ function handleTouchStart(e) {
         isDragging = true;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
-
         // Zaznamenat čas a pozici pro detekci dlouhého podržení
         touchStartTime = Date.now();
         touchStartX = lastX;
@@ -580,7 +589,9 @@ function handleTouchMove(e) {
                 if (coordDisplay) {
                     const formattedX = formatCoordinate(gridX);
                     const formattedZ = formatCoordinate(gridY);
-                    coordDisplay.textContent = `X: ${formattedX}, Z: ${formattedZ}`;
+
+                    // Aktualizujeme každou souřadnici na vlastním řádku
+                    coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedZ}</div>`;
                     coordDisplay.style.fontWeight = 'bold';
                 }
             }
@@ -641,22 +652,22 @@ function handleTouchMove(e) {
  * Zpracuje událost zvednutí prstu z obrazovky
  */
 function handleTouchEnd(e) {
+    e.preventDefault();
+
     // Zrušit časovač pro dlouhé podržení
     clearTimeout(longPressTimer);
 
     // Pokud všechny prsty byly zvednuty
     if (e.touches.length === 0) {
         isDragging = false;
+        isLongPress = false;
+        lastPinchDistance = 0;
+        initialScale = 0;
 
         // Neukončovat režim křížku hned při zvednutí prstu
         // Tím umožníme uživateli kliknout mimo křížek pro jeho zrušení
-
-        // Resetovat pinch proměnné
-        lastPinchDistance = 0;
-        initialScale = 0;
     } else if (e.touches.length === 1) {
-        // Pokud zůstal jeden prst (při ukončení pinch-to-zoom)
-        isDragging = true;
+        // Jeden prst (při ukončení pinch-to-zoom)
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
 
@@ -668,6 +679,9 @@ function handleTouchEnd(e) {
 
 /**
  * Provede zoom na určitou pozici s daným faktorem
+ * @param {number} x - X souřadnice na obrazovce
+ * @param {number} y - Y souřadnice na obrazovce
+ * @param {number} factor - Faktor zoomu
  */
 function zoomAt(x, y, factor) {
     // Převést pozici kurzoru/dotyku na souřadnice mřížky
@@ -676,9 +690,6 @@ function zoomAt(x, y, factor) {
 
     // Změnit měřítko
     scale *= factor;
-
-    // ODSTRANĚNO: Odstranili jsme limit na měřítko
-    // scale = Math.max(0.1, Math.min(scale, 10));
 
     // Aktualizovat offset, aby zůstal bod pod kurzorem/dotykem na stejném místě
     offsetX = x - gridX * scale;
@@ -738,7 +749,9 @@ function showCrossMarker(screenX, screenY, gridX, gridY) {
         if (coordDisplay) {
             const formattedX = formatCoordinate(gridX);
             const formattedZ = formatCoordinate(gridY); // Použijeme Z místo Y pro správný popis os
-            coordDisplay.textContent = `X: ${formattedX}, Z: ${formattedZ}`;
+
+            // Aktualizujeme každou souřadnici na vlastním řádku
+            coordDisplay.innerHTML = `<div class="coord">X: ${formattedX}</div><div class="coord">Z: ${formattedZ}</div>`;
             coordDisplay.style.fontWeight = 'bold';
         }
 
@@ -767,6 +780,21 @@ function hideCrossMarker() {
 function formatCoordinate(value) {
     if (Math.abs(value) < 0.001) return '0';
     return value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+/**
+ * Aktualizuje pozice statických popisků os
+ */
+function updateAxisLabelsPosition() {
+    const xAxisLabel = document.querySelector('.axis-label.x-axis');
+    const zAxisLabel = document.querySelector('.axis-label.z-axis');
+    const xAxisArrow = document.querySelector('.axis-arrow.x-axis');
+    const zAxisArrow = document.querySelector('.axis-arrow.z-axis');
+
+    if (xAxisLabel && zAxisLabel && xAxisArrow && zAxisArrow) {
+        // Pozice Z osy je nastavena přes CSS
+        // Pozice X osy je nastavena přes CSS
+    }
 }
 
 // Smazat starý export a nahradit jediným správným exportem

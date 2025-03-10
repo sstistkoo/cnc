@@ -20,7 +20,15 @@
             <button id="zoom-out" title="Oddálit" aria-label="Oddálit">−</button>
             <button id="reset" title="Reset zobrazení" aria-label="Resetovat zobrazení">↺</button>
         </div>
-        <div class="coordinates" id="coord-display">X: 0, Z: 0</div>
+        <div class="coordinates" id="coord-display">
+            <div class="coord">X: 0</div>
+            <div class="coord">Z: 0</div>
+        </div>
+        <!-- Ponecháme pouze statické popisky os -->
+        <div class="axis-label x-axis">X</div>
+        <div class="axis-arrow x-axis"></div>
+        <div class="axis-label z-axis">Z</div>
+        <div class="axis-arrow z-axis"></div>
         <div class="cross-marker" id="cross-marker"></div>
     </div>
 

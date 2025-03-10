@@ -93,15 +93,28 @@ button:active {
 
 .coordinates {
     position: absolute;
-    bottom: 15px; /* Zvýšit pro lepší dosah na mobilech */
+    top: 25px; /* Posunuto o 10px níž z původních 15px */
     left: 15px;
-    background-color: rgba(255, 255, 255, 0.9); /* Zvýšit neprůhlednost */
-    padding: 10px 15px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 12px 15px;
     border-radius: 8px;
     font-family: monospace;
     z-index: 1000;
-    font-size: 16px;
+    font-size: 18px; /* Zvětšený font */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column; /* Souřadnice pod sebou */
+    line-height: 1.4; /* Větší řádkování */
+}
+
+/* Nový styl pro jednotlivé souřadnice */
+.coordinates .coord {
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+.coordinates .coord:last-child {
+    margin-bottom: 0;
 }
 
 /* Styly pro vysouvací panel */
@@ -278,6 +291,54 @@ button:active {
     transform: translate(-50%, -50%);
 }
 
+/* Přidáme styly pro popisky os */
+.axis-label {
+    position: absolute;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    pointer-events: none; /* Aby nereagoval na eventy myši */
+    z-index: 999;
+}
+
+.axis-label.x-axis {
+    bottom: 150px;
+    right: 15px;
+}
+
+.axis-label.z-axis {
+    top: 15px;
+    left: 20px;
+}
+
+/* Šipky u os */
+.axis-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 999;
+}
+
+/* Šipka X-ové osy (vpravo) */
+.axis-arrow.x-axis {
+    border-top: 6px solid transparent;
+    border-left: 12px solid #333;
+    border-bottom: 6px solid transparent;
+    bottom: 149px;
+    right: 5px;
+}
+
+/* Šipka Z-ové osy (nahoru) */
+.axis-arrow.z-axis {
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 12px solid #333;
+    top: 5px;
+    left: 14px;
+}
+
 /* Přizpůsobení pro mobilní zařízení */
 @media (max-width: 768px) {
     .controls {
@@ -297,7 +358,11 @@ button:active {
     }
 
     .coordinates {
-        font-size: 16px; /* Větší text na mobilních zařízeních */
+        top: 20px; /* Posunuto o 10px níž z původních 10px */
+        left: 10px;
+        font-size: 16px;
+        padding: 10px 12px;
+        max-width: 110px; /* Omezit maximální šířku */
     }
     .sliding-panel {
         width: 100%;
@@ -342,6 +407,14 @@ button:active {
     .playback-controls.minimized button {
         opacity: 0.8;
     }
+
+    .axis-label {
+        font-size: 12px;
+    }
+
+    .axis-label.x-axis {
+        bottom: 120px;
+    }
 }
 
 /* Přizpůsobení pro mobilní zařízení - malé obrazovky */
@@ -360,8 +433,9 @@ button:active {
     }
 
     .coordinates {
-        font-size: 16px;
-        padding: 8px 12px;
+        font-size: 14px; /* Ještě menší velikost fontu na malých zařízeních */
+        padding: 8px 10px;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     }
 
     .playback-controls {
@@ -429,8 +503,16 @@ button:active {
         flex-direction: row; /* V landscape módu vedle sebe */
     }
 
+    .coordinates {
+        top: 70px; /* Posunuto o 10px níž z původních 60px */
+    }
+
     .sliding-panel {
         height: 40vh; /* Menší výška panelu v landscape módu */
+    }
+
+    .axis-label.x-axis {
+        bottom: 100px;
     }
 }
 
