@@ -323,7 +323,6 @@
             <button id="zoom-out">−</button>
             <button id="reset" title="Reset zobrazení">↺</button>
         </div>
-        <button id="controls-toggle" class="controls-toggle" title="Zobrazit/skrýt ovládání">👁️</button>
         <div class="coordinates" id="coord-display">X: 0, Z: 0</div>
         <div class="cross-marker" id="cross-marker"></div>
         <div id="debug-display" style="position: fixed; top: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 5px; font-size: 12px; display: none;"></div>
@@ -340,7 +339,8 @@
             <button id="speed-up" title="Zvýšit rychlost">+</button>
             <button id="speed-reset" title="Resetovat rychlost">↺</button>
         </div>
-        <button id="menu-button" title="Otevřít menu">👁️</button>
+        <button id="controls-toggle" title="Zobrazit/skrýt ovládání">👁️</button>
+        <button id="menu-button" title="Otevřít menu">☰</button>
     </div>
 
     <button class="panel-toggle" id="panel-toggle">Panel</button>
@@ -395,7 +395,7 @@
 
             // Umístit počátek souřadnic do levého dolního rohu s offsetem
             offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
-            offsetY = canvas.height - 112;  // Increased by 50% more (from 75px to 112px) from bottom edge
+            offsetY = canvas.height - 168;  // Increased by 50% more (from 112px to 168px) from bottom edge
 
             drawGrid();
         });
@@ -613,7 +613,7 @@
 
             // Resetovat do levého dolního rohu (místo do středu)
             offsetX = 25;  // Reduced by 50% (from 50px to 25px) from left edge
-            offsetY = canvas.height - 112;  // Increased by 50% more (from 75px to 112px) from bottom edge
+            offsetY = canvas.height - 168;  // Increased by 50% more (from 75px to 168px) from bottom edge
             drawGrid();
         });
 
@@ -1043,7 +1043,6 @@
         if (controlsVisibilityBtn) {
             controlsVisibilityBtn.addEventListener('click', () => {
                 controlsPanel.classList.toggle('hidden');
-                controlsToggleBtn.textContent = controlsPanel.classList.contains('hidden') ? 'Zobrazit ovládání' : 'Skrýt ovládání';
             });
         }
 
