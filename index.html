@@ -84,6 +84,8 @@
             transform: translateY(0);
             transition: transform 0.3s ease-in-out;
             visibility: visible;
+            height: auto !important; /* Zajistí, že výška bude respektována i na mobilních zařízeních */
+            min-height: 30vh; /* Minimální výška pro mobilní zařízení */
         }
 
         #bottomEditor.open {
@@ -422,7 +424,19 @@
             const middleHeight = isMiddleOpen ? MIDDLE_HEIGHT : 1;
             topEditor.style.height = `${topHeight}vh`;
             middleWindow.style.height = `${middleHeight}vh`;
-            bottomEditor.style.height = `${bottomHeight}vh`;
+            
+            // Upravená logika pro výšku bottomEditor na mobilních zařízeních
+            if (window.innerWidth <= 768) { // Mobilní zařízení
+                if (isMiddleOpen) {
+                    bottomEditor.style.height = `30vh`; // Fixní výška na mobilních zařízeních při otevřeném menu
+                    bottomEditor.style.display = 'block'; // Zajistí, že editor bude viditelný
+                } else {
+                    bottomEditor.style.height = `${bottomHeight}vh`;
+                }
+            } else {
+                bottomEditor.style.height = `${bottomHeight}vh`;
+            }
+            
             middleContent.classList.toggle('hidden', !isMiddleOpen);
         }
 
