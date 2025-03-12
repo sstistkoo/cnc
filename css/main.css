@@ -1,0 +1,827 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    touch-action: none;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f3f4f6;
+}
+
+.editor {
+    background-color: white;
+    overflow: hidden;
+    position: relative;
+}
+
+.editor-label {
+    position: absolute;
+    top: 0;
+    right: 8px;
+    padding: 4px 8px 8px;
+    background-color: #e5e7eb;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #374151;
+    z-index: 10;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.editor-label::after {
+    content: '';
+    margin-top: 8px;
+    width: 24px;
+    height: 4px;
+    background-color: #6b7280;
+    border-radius: 9999px;
+    box-shadow: 0 6px 0 #6b7280;
+}
+
+.editor-label:hover {
+    background-color: #d1d5db;
+}
+
+.editor textarea {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    border: 1px solid #d1d5db;
+    padding: 1.5rem 1rem 1rem;
+    font-size: 1rem;
+    font-family: monospace;
+}
+
+#topEditor {
+    position: relative;
+    z-index: 1;
+}
+
+#bottomEditor {
+    position: relative;
+    z-index: 1001;
+    visibility: visible;
+    min-height: 5vh;
+    /* Minimální výška pro mobilní zařízení */
+}
+
+@media (max-width: 768px) {
+    #bottomEditor {
+        min-height: 20vh;
+        /* Větší minimální výška na mobilních zařízeních */
+    }
+}
+
+.middle-window {
+    background-color: #e5e7eb;
+    position: relative;
+    overflow: hidden;
+    transition: height 0.3s ease-in-out;
+    border-top: 1px solid #d1d5db;
+    border-bottom: 1px solid #d1d5db;
+}
+
+.middle-content {
+    height: 100%;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    transition: opacity 0.3s;
+}
+
+.middle-content.hidden {
+    opacity: 0;
+}
+
+.square-button {
+    width: 45px;
+    height: 45px;
+    background-color: #64748b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0 10px;
+}
+
+.square-button:hover {
+    background-color: #475569;
+}
+
+.file-icon {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto;
+    background-color: #f3f4f6;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px dashed #d1d5db;
+}
+
+.file-icon svg {
+    width: 24px;
+    height: 24px;
+    color: #374151;
+}
+
+.file-icon:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+.file-icon:hover svg {
+    color: #1f2937;
+}
+
+.file-icon span {
+    font-size: 12px;
+    margin-top: 5px;
+    text-align: center;
+    color: #374151;
+}
+
+.file-input {
+    display: none;
+}
+
+.side-panel {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    width: 300px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1001;
+}
+
+.left-panel {
+    left: 0;
+    transform: translateX(-100%);
+}
+
+.right-panel {
+    right: 0;
+    transform: translateX(100%);
+}
+
+.side-panel.open {
+    transform: translateX(0);
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    width: 30px;
+    height: 30px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    right: 10px;
+    /* Změna pozice křížku */
+}
+
+.left-panel .close-button {
+    right: 10px;
+}
+
+.right-panel .close-button {
+    left: 10px;
+}
+
+.top-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(0);
+    /* Změněno z translateY(-100%) na 0 */
+    transition: transform 0.3s ease-in-out;
+    z-index: 1001;
+    padding: 0;
+    min-height: 45px;
+    /* Minimální výška pro zobrazení ovládacích prvků */
+}
+
+.top-panel.hidden {
+    transform: translateY(-100%);
+}
+
+.top-panel.open {
+    transform: translateY(0);
+}
+
+.program-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 5px 10px;
+    overflow-y: visible;
+    flex: 1;
+    height: 45px;
+    align-items: center;
+}
+
+.program-item {
+    height: 35px;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.program-item:hover {
+    background-color: #e5e7eb;
+}
+
+.top-panel-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 5px 15px;
+    height: 45px;
+    gap: 15px;
+    /* Mezera mezi ikonami */
+    border-left: 1px solid #e5e7eb;
+    background-color: white;
+}
+
+.freeze-button {
+    width: 35px;
+    height: 35px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    /* Odstranění margin */
+    position: relative;
+    /* Přidáno pro konzistenci */
+}
+
+.close-button {
+    position: relative;
+    /* Změna z absolute na relative */
+    top: auto;
+    /* Odstranění absolute pozicování */
+    right: auto;
+    /* Odstranění absolute pozicování */
+    width: 35px;
+    height: 35px;
+    font-size: 28px;
+}
+
+.freeze-button svg {
+    width: 24px;
+    height: 24px;
+}
+
+.close-button {
+    width: 35px;
+    height: 35px;
+    font-size: 28px;
+    /* Větší křížek */
+}
+
+/* Odstraníme margin-right, protože používáme gap v parent elementu */
+.freeze-button {
+    margin-right: 0;
+}
+
+.freeze-button span {
+    display: none;
+    /* Skryjeme text */
+}
+
+.freeze-button.active {
+    color: #2563eb;
+}
+
+.program-item.active {
+    background-color: #60a5fa;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.program-item.active:hover {
+    background-color: #3b82f6;
+}
+
+/* Přidat nový wrapper pro flex layout */
+.top-panel-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 45px;
+}
+
+/* Přidáme styl pro aktivní tlačítko v middle-window */
+.square-button.active {
+    background-color: #3b82f6;
+    /* Modré pozadí */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+    /* Vnitřní stín */
+}
+
+/* Přidáme vylepšené styly pro SVG ikony v tlačítkách */
+.square-button svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+/* Zvýrazníme tlačítka pro ukládání/načítání jinými barvami */
+#saveButton {
+    background-color: rgba(76, 175, 80, 0.7);
+    /* Zelená barva */
+}
+
+#loadJsonButton {
+    background-color: rgba(33, 150, 243, 0.7);
+    /* Modrá barva */
+}
+
+#saveJsonButton {
+    background-color: rgba(156, 39, 176, 0.7);
+    /* Fialová barva */
+}
+
+/* Efekty při najetí na tlačítka */
+#saveButton:hover {
+    background-color: rgba(76, 175, 80, 0.9);
+}
+
+#loadJsonButton:hover {
+    background-color: rgba(33, 150, 243, 0.9);
+}
+
+#saveJsonButton:hover {
+    background-color: rgba(156, 39, 176, 0.9);
+}
+
+/* Přidáme styl pro tlačítko Parse v horním panelu */
+.parse-button {
+    height: 35px;
+    padding: 0 15px;
+    margin-right: 15px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.parse-button:hover {
+    background-color: #3367d6;
+}
+
+/* Styl pro tlačítko konzole */
+.console-button {
+    height: 35px;
+    padding: 0 15px;
+    margin-right: 15px;
+    background-color: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.console-button:hover {
+    background-color: #e84a4a;
+}
+
+/* Skryté okno konzole */
+.mobile-console {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50vh;
+    background: rgba(30, 30, 30, 0.95);
+    color: white;
+    z-index: 2000;
+    font-family: monospace;
+    flex-direction: column;
+    border-top: 2px solid #ff6b6b;
+}
+
+.mobile-console.open {
+    display: flex;
+}
+
+.mobile-console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 15px;
+    background: #333;
+    border-bottom: 1px solid #555;
+}
+
+.mobile-console-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.mobile-console-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.log-entry.error {
+    color: #ff6b6b;
+}
+
+.log-entry.warn {
+    color: #ffb347;
+}
+
+.log-entry.info {
+    color: #63c5da;
+}
+
+/* Styly pro levý panel */
+.panel-content {
+    padding: 15px;
+    overflow-y: auto;
+    height: calc(100% - 50px);
+}
+
+.panel-title {
+    margin: 0 0 15px 0;
+    font-size: 1.2rem;
+    color: #2563eb;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.panel-section {
+    margin-bottom: 20px;
+}
+
+.panel-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: #4b5563;
+}
+
+.panel-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.panel-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.panel-button:hover {
+    background-color: #e5e7eb;
+}
+
+.panel-button svg {
+    width: 18px;
+    height: 18px;
+    color: #4b5563;
+}
+
+.panel-button span {
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.active-program-info {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.active-program-info .no-program {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.active-program-info .program-name {
+    font-weight: bold;
+    color: #2563eb;
+    margin-bottom: 5px;
+}
+
+.active-program-info .program-meta {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.line-numbers {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+    width: 40px;
+    height: calc(100% - 1.5rem);
+    background-color: #f5f5f5;
+    border-right: 1px solid #ddd;
+    padding: 0;
+    font-family: monospace;
+    font-size: 1rem;
+    color: #777;
+    text-align: right;
+    user-select: none;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 2;
+    margin-top: 0;
+}
+
+.line-numbers div {
+    padding-right: 5px;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    white-space: nowrap;
+}
+
+.editor textarea {
+    padding-left: 45px !important;
+    line-height: 1.5rem !important;
+    font-family: monospace !important;
+    font-size: 1rem !important;
+    white-space: pre !important;
+    tab-size: 4;
+}
+
+/* Modální okna */
+.modal-window {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.modal-window.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: white;
+    width: 80%;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-content.wide {
+    max-width: 1200px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #374151;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #9ca3af;
+}
+
+.modal-close:hover {
+    color: #4b5563;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(90vh - 60px);
+}
+
+.parameter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.parameter-section {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.parameter-section.wide {
+    grid-column: 1 / -1;
+}
+
+.parameter-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #4b5563;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+}
+
+.parameter-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.parameter-tag {
+    background-color: #e5e7eb;
+    color: #4b5563;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.parameter-none {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.parameter-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.parameter-table th, .parameter-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.parameter-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+.parsed-lines-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.parsed-lines-table th, .parsed-lines-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+}
+
+.parsed-lines-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #4b5563;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.parsed-lines-table td code {
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+/* Barevné zvýraznění řádků podle typu */
+.line-type-rapid_move {
+    background-color: #fee2e2;
+}
+.line-type-linear_move {
+    background-color: #e0f2fe;
+}
+.line-type-arc_cw, .line-type-arc_ccw {
+    background-color: #d1fae5;
+}
+.line-type-comment {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+.line-type-tool_selection, .line-type-tool_change {
+    background-color: #fef3c7;
+}
+.line-type-spindle_control {
+    background-color: #dbeafe;
+}
+.line-type-coolant_control {
+    background-color: #c7d2fe;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 85vh;
+    }
+
+    .parameter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .parameter-table th, .parameter-table td,
+    .parsed-lines-table th, .parsed-lines-table td {
+        padding: 6px;
+        font-size: 0.85rem;
+    }
+
+    .parsed-lines-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
