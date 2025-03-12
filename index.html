@@ -229,11 +229,15 @@
             height: auto;
             background-color: white;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-100%);
+            transform: translateY(0); /* Změněno z translateY(-100%) na 0 */
             transition: transform 0.3s ease-in-out;
             z-index: 1001;
             padding: 0;
             min-height: 45px; /* Minimální výška pro zobrazení ovládacích prvků */
+        }
+
+        .top-panel.hidden {
+            transform: translateY(-100%);
         }
 
         .top-panel.open {
@@ -490,19 +494,21 @@
 </head>
 <body>
     <div class="container">
-        <div id="topPanel" class="top-panel">
+        <div id="topPanel" class="top-panel open">
             <div class="top-panel-wrapper">
                 <div id="programList" class="program-list">
                     <!-- Programy budou dynamicky přidány zde -->
                 </div>
                 <div class="top-panel-controls">
-                    <!-- Nové tlačítko pro konzoli -->
+                    <!-- Nové tlačítko pro konzoli - opravené umístění a viditelnost -->
                     <button id="consoleButton" class="console-button" title="Otevřít konzoli">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
                             <polyline points="4,17 10,11 4,5"></polyline>
                             <line x1="12" y1="19" x2="20" y2="19"></line>
                         </svg>
                     </button>
+                    <!-- Tlačítko pro skrytí/zobrazení panelu -->
+                    <button id="toggleTopPanelBtn" class="close-button" onclick="toggleTopPanel()">×</button>
                 </div>
             </div>
         </div>
@@ -521,7 +527,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                         <line x1="12" y1="11" x2="12" y2="17"/>
-                        <polyline points="9 14 12 11 15 14"/>
+                        <polyline points="9 14 12 17 15 14"/>
                     </svg>
                 </button>
                 <input type="file" id="fileInput" class="file-input" accept=".mpf,.spf,.nc,.cnc" multiple />
@@ -707,6 +713,9 @@
             startY = e.clientY;
             startTopHeight = topHeight;
             startBottomHeight = bottomHeight;
+
+            // Zabránit propagaci události
+            e.stopPropagation();
         });
 
         document.addEventListener('mousemove', (e) => {
@@ -780,10 +789,26 @@
         }
 
         function toggleTopPanel() {
-            const isOpen = topPanel.classList.toggle('open');
+            const isHidden = topPanel.classList.toggle('hidden');
 
-            if (isOpen) {
-                // Panel se otevírá - uložit původní výšky a nastavit marginTop
+            if (isHidden) {
+                // Panel je skryt - obnovit původní výšky
+                if (originalTopHeight && originalBottomHeight) {
+                    topHeight = originalTopHeight;
+                    bottomHeight = originalBottomHeight;
+                }
+                container.style.marginTop = '0';
+
+                // Aktualizovat tlačítko
+                const toggleBtn = document.getElementById('toggleTopPanelBtn');
+                if (toggleBtn) toggleBtn.textContent = '↓'; // Šipka dolů pro zobrazení
+
+                if (simulatorButton) {
+                    simulatorButton.classList.remove('active');
+                    simulatorButton.title = "Zobrazit seznam programů";
+                }
+            } else {
+                // Panel je zobrazen - uložit původní výšky a nastavit marginTop
                 originalTopHeight = topHeight;
                 originalBottomHeight = bottomHeight;
 
@@ -791,16 +816,12 @@
                 const programList = document.getElementById('programList');
                 const items = programList.children;
 
-                // Konstanty pro výpočet výšky
-                const controlsHeight = 45; // Výška panelu s ovládacími prvky
-
-                // Výpočet skutečné šířky dostupné pro položky
-                const availableWidth = window.innerWidth - 150; // Odečteme prostor pro controls
-                const itemWidth = 150;      // Přibližná šířka jedné položky
+                // Výpočet výšky...
+                const controlsHeight = 45;
+                const availableWidth = window.innerWidth - 150;
+                const itemWidth = 150;
                 const itemsPerRow = Math.floor(availableWidth / itemWidth);
                 const rows = Math.ceil(items.length / itemsPerRow) || 1;
-
-                // Vypočítáme celkovou výšku - pokud je jeden řádek, použijeme controlsHeight
                 const panelHeight = rows === 1 ? controlsHeight : controlsHeight * rows;
 
                 topPanel.style.height = `${panelHeight}px`;
@@ -813,26 +834,18 @@
 
                 topHeight = availableSpace * ratio;
                 bottomHeight = availableSpace * (1 - ratio);
-            } else {
-                // Panel se zavírá - obnovit původní výšky
-                if (originalTopHeight && originalBottomHeight) {
-                    topHeight = originalTopHeight;
-                    bottomHeight = originalBottomHeight;
-                }
-                container.style.marginTop = '0';
-            }
-            updateHeights();
 
-            // Přidat vizuální indikaci stavu tlačítka
-            if (simulatorButton) {
-                if (isOpen) {
+                // Aktualizovat tlačítko
+                const toggleBtn = document.getElementById('toggleTopPanelBtn');
+                if (toggleBtn) toggleBtn.textContent = '×'; // Křížek pro skrytí
+
+                if (simulatorButton) {
                     simulatorButton.classList.add('active');
                     simulatorButton.title = "Skrýt seznam programů";
-                } else {
-                    simulatorButton.classList.remove('active');
-                    simulatorButton.title = "Zobrazit seznam programů";
                 }
             }
+
+            updateHeights();
         }
 
         function toggleLeftPanel() {
@@ -859,65 +872,81 @@
             }
         });
 
-        const freezeButton = document.getElementById('freezeButton');
-        let isPanelFrozen = true; // Změněno z false na true
-        let activeProgram = null;
+        const isPanelFrozen = true; // Panel zůstává vždy otevřený
 
         // Přidat nastavení třídy active hned po načtení DOM
         document.addEventListener('DOMContentLoaded', () => {
-            // Nastavit tlačítko zmrazení jako aktivní při načtení
-            freezeButton.classList.add('active');
-
-            // Načíst CNC program ze souboru JSON
+            // Místo toho přejdeme přímo k načtení CNC programu
             loadCNCProgramFromJSON();
-        });
 
-        freezeButton.addEventListener('click', () => {
-            isPanelFrozen = !isPanelFrozen;
-            freezeButton.classList.toggle('active');
-        });
+            // Přidáme správný event listener pro tlačítko konzole
+            const consoleButton = document.getElementById('consoleButton');
+            if (consoleButton) {
+                consoleButton.addEventListener('click', toggleMobileConsole);
+            }
 
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            const programList = document.getElementById('programList');
-            programList.innerHTML = '';
+            // Inicializace přesměrování konzolového výstupu
+            setupMobileConsoleOutput();
 
-            files.forEach(file => {
-                const ext = file.name.split('.').pop().toLowerCase();
-                if (['mpf', 'spf'].includes(ext)) {
-                    const programItem = document.createElement('div');
-                    programItem.className = 'program-item';
-                    programItem.textContent = file.name;
-                    programItem.onclick = () => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            editorTextarea.value = e.target.result;
+            // NOVÝ KÓD - Kompletní restart všech handlerů pro editorHandle
+            const editorHandle = document.getElementById('editorHandle');
+            if (editorHandle) {
+                console.log('Úplné vyčištění a restart všech event handlerů pro Menu tlačítko');
 
-                            // Zvýraznění aktivního programu
-                            if (activeProgram) {
-                                activeProgram.classList.remove('active');
-                            }
-                            programItem.classList.add('active');
-                            activeProgram = programItem;
+                // Vytvořit úplně nový element místo původního (zajistí odstranění všech event handlerů)
+                const newEditorHandle = editorHandle.cloneNode(true);
+                editorHandle.parentNode.replaceChild(newEditorHandle, editorHandle);
 
-                            // Zavřít panel pouze pokud není zamrzlý (toto teď bude defaultně true)
-                            if (!isPanelFrozen) {
-                                toggleTopPanel();
-                            }
-                        };
-                        reader.readAsText(file);
-                    };
-                    programList.appendChild(programItem);
-                }
-            });
+                // Přidat JEDINÝ správný event handler pro kliknutí
+                newEditorHandle.addEventListener('click', function(e) {
+                    console.log('Menu tlačítko kliknuto - spouštím alternativní handler');
+                    e.preventDefault();
+                    e.stopPropagation();
 
-            if (programList.children.length > 0) {
-                topPanel.classList.add('open');
-                adjustHeightsForTopPanel(true);
+                    // Základní logika přepínání
+                    isMiddleOpen = !isMiddleOpen;
+
+                    if (isMiddleOpen) {
+                        console.log('Otevírám panel editoru');
+                        const availableSpace = 100 - MIDDLE_HEIGHT;
+                        topHeight = availableSpace * 0.7; // 70% horní panel
+                        bottomHeight = availableSpace * 0.3; // 30% dolní panel
+                    } else {
+                        console.log('Zavírám panel editoru');
+                        topHeight = 99;
+                        bottomHeight = 1;
+                    }
+
+                    // Aktualizovat výšky elementů
+                    topEditor.style.height = `${topHeight}vh`;
+                    middleWindow.style.height = `${isMiddleOpen ? MIDDLE_HEIGHT : 1}vh`;
+                    bottomEditor.style.height = `${bottomHeight}vh`;
+                    middleContent.classList.toggle('hidden', !isMiddleOpen);
+
+                    // Zajistit, že číslování řádků bude fungovat
+                    setTimeout(function() {
+                        // Vytvořit číslování řádků od začátku
+                        setupSimpleLineNumbers();
+                    }, 300);
+                });
+
+                // Přidat správný handler pro mousedown - POUZE pro tažení
+                newEditorHandle.addEventListener('mousedown', function(e) {
+                    // Pouze pokud se jedná o levé tlačítko myši (hlavní tlačítko)
+                    if (e.button === 0) {
+                        console.log('Menu mousedown - spouštím tažení');
+                        isDragging = true;
+                        startY = e.clientY;
+                        startTopHeight = topHeight;
+                        startBottomHeight = bottomHeight;
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                });
             }
         });
 
-        // Upravit event listener pro změnu velikosti okna
+        // Přidat event listener pro změnu velikosti okna
         window.addEventListener('resize', () => {
             if (topPanel.classList.contains('open')) {
                 adjustHeightsForTopPanel(true);
@@ -926,9 +955,8 @@
 
         window.addEventListener('resize', updateHeights);
 
-        // Funkce pro otevření simulátoru v iframe
         function openSimulator() {
-            // Vytvoříme iframe pro simulátor, pokud ještě neexistuje
+            // Funkce pro otevření simulátoru v iframeu
             let simulatorFrame = document.getElementById('simulatorFrame');
             if (!simulatorFrame) {
                 simulatorFrame = document.createElement('iframe');
@@ -937,23 +965,19 @@
                 simulatorFrame.style.height = '100%';
                 simulatorFrame.style.border = 'none';
                 simulatorFrame.src = 'okno_simulator.html';
-
                 // Vyčistíme obsah middle-window a vložíme iframe
                 const middleContent = document.querySelector('.middle-content');
                 middleContent.innerHTML = '';
                 middleContent.appendChild(simulatorFrame);
-
                 // Přidáme posluchač zpráv z iframe
                 window.addEventListener('message', (event) => {
                     // Zde můžeme zpracovat zprávy ze simulátoru, pokud bude potřeba
                     console.log('Zpráva ze simulátoru:', event.data);
                 });
             }
-
             // Zobrazíme middle-window, pokud je skryté
             middleWindow.style.height = '40%';
             middleContent.classList.remove('hidden');
-
             // Odešleme CNC kód do simulátoru
             const cncCode = editorTextarea.value;
             setTimeout(() => {
@@ -966,14 +990,25 @@
 
         const simulatorButton = document.getElementById('simulatorButton');
         simulatorButton.onclick = function() {
-            // Přepnout horní panel (otevřít pokud je zavřený, zavřít pokud je otevřený)
-            toggleTopPanel();
+            topPanel.classList.toggle('hidden');
+            if (!topPanel.classList.contains('hidden')) {
+                // Panel je zobrazen
+                const panelHeight = topPanel.offsetHeight;
+                container.style.marginTop = `${panelHeight}px`;
+                this.classList.add('active');
+                this.title = "Skrýt seznam programů";
+            } else {
+                // Panel je skryt
+                container.style.marginTop = '0';
+                this.classList.remove('active');
+                this.title = "Zobrazit seznam programů";
+            }
+            updateHeights();
         };
 
         // Přidat novou funkci pro načtení CNC programu z JSON souboru
         function loadCNCProgramFromJSON() {
             console.log('Načítám CNC program z JSON souboru...');
-
             fetch('./program/K1_03_4431.json')
                 .then(response => {
                     if (!response.ok) {
@@ -983,22 +1018,17 @@
                 })
                 .then(data => {
                     console.log('Program načten:', data.name);
-
-                    // Vyčistit a znovu naplnit seznam programů
                     const programList = document.getElementById('programList');
+                    // Vyčistit a znovu naplnit seznam programů
                     programList.innerHTML = '';
-
-                    // Nejprve přidat hlavní program
+                    // Přidat programy do seznamu
                     const mainProgram = data.programs.find(p => p.type === 'MPF');
                     if (mainProgram) {
-                        addProgramToList(mainProgram, programList, true); // true pro automatickou aktivaci
+                        addProgramToList(mainProgram, programList, true);
                     }
-
-                    // Přidat ostatní podprogramy
                     data.programs.filter(p => p.type === 'SPF').forEach(program => {
                         addProgramToList(program, programList);
                     });
-
                     // Otevřít panel s programy
                     if (!topPanel.classList.contains('open')) {
                         topPanel.classList.add('open');
@@ -1014,23 +1044,17 @@
         function addProgramToList(program, programList, activate = false) {
             const programItem = document.createElement('div');
             programItem.className = 'program-item';
-
-            // Odstranit příponu .spf z názvu, pokud existuje
             let displayName = program.name;
+            // Odstranit příponu .spf z názvu, pokud existuje
             if (program.type === 'SPF' && displayName.toLowerCase().endsWith('.spf')) {
                 displayName = displayName.substring(0, displayName.length - 4);
             }
-
             programItem.textContent = displayName;
             programItem.dataset.originalName = program.name; // Uchovat původní název pro odkazy
-
-            // Uložit obsah programu jako data atribut
             programItem.dataset.code = program.code.join('\n');
-
+            // Načíst kód programu do editoru
             programItem.onclick = () => {
-                // Načíst kód programu do editoru
                 editorTextarea.value = programItem.dataset.code;
-
                 // Zvýraznění aktivního programu
                 if (activeProgram) {
                     activeProgram.classList.remove('active');
@@ -1039,23 +1063,18 @@
                 activeProgram = programItem;
 
                 // Panel se již automaticky nezavírá, odstraněna podmínka isPanelFrozen
-
-                // Parsovat program pro zobrazení v konzoli
                 console.clear();
                 console.log(`Parsování programu: ${program.name}`);
-
                 import('./js/cnc-line-parser.js').then(module => {
                     const parsedProgram = module.parseProgram(programItem.dataset.code);
 
                     console.log(`Celkem ${parsedProgram.length} řádků parsováno`);
-
-                    // Statistiky o typech řádků
                     const typeCounts = {};
+                    // Statistiky o typech řádků
                     parsedProgram.forEach(line => {
                         if (!typeCounts[line.type]) typeCounts[line.type] = 0;
                         typeCounts[line.type]++;
                     });
-
                     console.group('Statistika typů řádků');
                     Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).forEach(([type, count]) => {
                         console.log(`${type}: ${count}`);
@@ -1065,7 +1084,6 @@
                     console.error('Chyba při parsování programu:', error);
                 });
             };
-
             programList.appendChild(programItem);
 
             // Pokud je označen jako aktivní, nastavit jako aktivní
@@ -1081,50 +1099,40 @@
         // Přidat nový event listener pro tlačítko Parse
         document.addEventListener('DOMContentLoaded', () => {
             // Existující kód...
-
-            // Přidat tlačítko Parse do middle-content
             const middleContent = document.querySelector('.middle-content');
+            // Přidat tlačítko Parse do middle-content
             if (middleContent) {
-                // Vytvořit a přidat tlačítko Parse
                 const parseButton = document.createElement('button');
                 parseButton.id = 'parseButton';
                 parseButton.className = 'square-button';
                 parseButton.innerHTML = 'Parse';
                 parseButton.title = 'Parsovat aktuální kód';
-
-                // Přidat tlačítko před simulatorButton
                 const simulatorButton = document.getElementById('simulatorButton');
+                // Přidat tlačítko před simulatorButton
                 if (simulatorButton) {
                     middleContent.insertBefore(parseButton, simulatorButton);
                 } else {
                     middleContent.appendChild(parseButton);
                 }
-
                 // Přidat event listener pro tlačítko Parse
                 parseButton.addEventListener('click', () => {
                     const codeContent = editorTextarea.value;
-
                     if (!codeContent || codeContent.trim() === '') {
                         console.warn('Žádný kód k parsování');
                         return;
                     }
-
                     console.clear();
                     console.log('%cParsování aktuálního kódu v editoru', 'color: green; font-size: 14px; font-weight: bold;');
-
-                    // Import modulu pro parsování a zavolání parseru
                     import('./js/cnc-line-parser.js').then(module => {
                         const parsedProgram = module.parseProgram(codeContent);
 
                         console.log(`%cCelkem ${parsedProgram.length} řádků parsováno`, 'color: green; font-weight: bold;');
-
-                        // Statistiky o typech řádků
                         const typeCounts = {};
+                        // Statistiky o typech řádků
                         parsedProgram.forEach(line => {
                             if (!typeCounts[line.type]) typeCounts[line.type] = 0;
                             typeCounts[line.type]++;
                         });
-
                         console.group('Statistika typů řádků');
                         Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).forEach(([type, count]) => {
                             console.log(`${type}: ${count}`);
@@ -1140,12 +1148,10 @@
         // Funkce pro uložení aktuálního programu
         function saveCurrentProgram() {
             const programContent = editorTextarea.value;
-
             if (!programContent || programContent.trim() === '') {
                 alert('Žádný obsah k uložení');
                 return;
             }
-
             // Získat název souboru
             let filename = 'program.mpf';
             if (activeProgram) {
@@ -1160,7 +1166,6 @@
                     }
                 }
             }
-
             const blob = new Blob([programContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1168,8 +1173,8 @@
             a.download = filename;
             document.body.appendChild(a);
             a.click();
+            // Uvolnit URL a odstranit element
             setTimeout(() => {
-                // Uvolnit URL a odstranit element
                 URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             }, 100);
@@ -1179,30 +1184,24 @@
         function loadProgramsFromJson(jsonContent) {
             try {
                 const data = JSON.parse(jsonContent);
-
                 if (!data.programs || !Array.isArray(data.programs)) {
                     alert('Neplatný formát JSON souboru. Chybí pole "programs".');
                     return;
                 }
-
                 const programList = document.getElementById('programList');
                 programList.innerHTML = '';
-
                 // Přidat programy do seznamu
                 const mainProgram = data.programs.find(p => p.type === 'MPF');
                 if (mainProgram) {
                     addProgramToList(mainProgram, programList, true);
                 }
-
                 data.programs.filter(p => p.type === 'SPF').forEach(program => {
                     addProgramToList(program, programList);
                 });
-
                 if (programList.children.length > 0 && !topPanel.classList.contains('open')) {
                     topPanel.classList.add('open');
                     adjustHeightsForTopPanel(true);
                 }
-
                 console.log(`Načteno ${data.programs.length} programů z JSON souboru`);
             } catch (error) {
                 console.error('Chyba při načítání JSON souboru:', error);
@@ -1214,31 +1213,26 @@
         function saveProgramsToJson() {
             const programList = document.getElementById('programList');
             const programItems = programList.querySelectorAll('.program-item');
-
             if (programItems.length === 0) {
                 alert('Žádné programy k uložení');
                 return;
             }
-
             const data = {
                 name: "CNC_Programs_" + new Date().toISOString().split('T')[0],
                 description: "Exportovaný soubor CNC programů",
                 programs: []
             };
-
             programItems.forEach(item => {
                 const name = item.textContent;
                 const code = item.dataset.code || '';
                 const type = name.toUpperCase().endsWith('.MPF') ? 'MPF' : 'SPF';
-
                 data.programs.push({
                     name,
-                    type,
                     description: `Program ${name}`,
+                    type,
                     code: code.split('\n')
                 });
             });
-
             const jsonContent = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonContent], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1247,8 +1241,8 @@
             a.download = data.name + ".json";
             document.body.appendChild(a);
             a.click();
+            // Uvolnit URL a odstranit element
             setTimeout(() => {
-                // Uvolnit URL a odstranit element
                 URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             }, 100);
@@ -1257,14 +1251,12 @@
         // Přidat event listenery pro nová tlačítka
         document.addEventListener('DOMContentLoaded', () => {
             // Existující kód...
-
             const saveButton = document.getElementById('saveButton');
             if (saveButton) {
                 saveButton.addEventListener('click', () => {
                     saveCurrentProgram();
                 });
             }
-
             const loadJsonButton = document.getElementById('loadJsonButton');
             if (loadJsonButton) {
                 loadJsonButton.addEventListener('click', () => {
@@ -1273,7 +1265,6 @@
                     jsonFileInput.type = 'file';
                     jsonFileInput.accept = '.json';
                     jsonFileInput.style.display = 'none';
-
                     jsonFileInput.addEventListener('change', (e) => {
                         if (e.target.files.length > 0) {
                             const file = e.target.files[0];
@@ -1284,13 +1275,12 @@
                             reader.readAsText(file);
                         }
                     });
-
+                    jsonFileInput.click();
                     document.body.appendChild(jsonFileInput);
                     jsonFileInput.click();
                     document.body.removeChild(jsonFileInput);
                 });
             }
-
             const saveJsonButton = document.getElementById('saveJsonButton');
             if (saveJsonButton) {
                 saveJsonButton.addEventListener('click', () => {
@@ -1302,13 +1292,11 @@
         // Upravit styl editoru pro zobrazení čísel řádků
         document.addEventListener('DOMContentLoaded', () => {
             // Existující kód...
-
             // Přidání funkce pro očíslování řádků v editoru
             function addLineNumbers(textarea) {
                 if (!textarea) return;
 
                 const container = textarea.parentElement;
-
                 // Vytvořit element pro čísla řádků, pokud ještě neexistuje
                 let lineNumbers = container.querySelector('.line-numbers');
                 if (!lineNumbers) {
@@ -1326,7 +1314,7 @@
                             position: absolute;
                             top: 1.5rem;
                             left: 0;
-                            width: 40px; /* Pevná šířka */
+                            width: 40px;
                             height: calc(100% - 1.5rem);
                             padding: 1rem 0 1rem 5px;
                             background-color: #f5f5f5;
@@ -1339,21 +1327,21 @@
                             user-select: none;
                             pointer-events: none;
                             overflow: hidden;
-                            white-space: pre !important; /* Velmi důležité - zabrání zalomení textu */
+                            white-space: pre !important;
                             line-height: 1.5;
                             display: flex;
-                            flex-direction: column; /* Sloupec - každé číslo bude na vlastním řádku */
+                            flex-direction: column;
                         }
                         .editor textarea {
                             padding-left: 45px !important;
                             line-height: 1.5;
                             font-family: monospace;
                             font-size: 1rem;
-                            white-space: pre !important; /* Velmi důležité - musí odpovídat line-numbers */
+                            white-space: pre !important;
                             tab-size: 4;
                             -moz-tab-size: 4;
-                            overflow-wrap: normal !important; /* Zabrání zalomení textu */
-                            word-wrap: normal !important; /* Zabrání zalomení textu */
+                            overflow-wrap: normal !important;
+                            word-wrap: normal !important;
                         }
                     `;
                     document.head.appendChild(style);
@@ -1363,17 +1351,14 @@
                 function updateLineNumbers() {
                     const text = textarea.value;
                     const lines = text.split('\n');
-
-                    // Použijeme přístup, kde vytváříme jeden element pro každé číslo řádku
                     lineNumbers.innerHTML = ''; // Vyčistit předchozí obsah
-
+                    // Použijeme přístup, kde vytváříme jeden element pro každé číslo řádku
                     for (let i = 0; i < lines.length; i++) {
                         const lineNumber = document.createElement('div');
                         lineNumber.textContent = (i + 1).toString();
                         lineNumber.style.height = '1.5em'; // Výška jednoho řádku
                         lineNumbers.appendChild(lineNumber);
                     }
-
                     // Zajištění stejné výšky a synchronizace scrollu
                     lineNumbers.style.height = textarea.clientHeight + 'px';
                     lineNumbers.scrollTop = textarea.scrollTop;
@@ -1386,12 +1371,9 @@
                     lineNumbers.scrollTop = textarea.scrollTop;
                 });
                 textarea.addEventListener('keydown', () => setTimeout(updateLineNumbers, 10)); // Pro zachycení změn po keydown
-
-                // Upravit čísla řádků při změně velikosti
                 new ResizeObserver(() => {
                     setTimeout(updateLineNumbers, 50);
                 }).observe(textarea);
-
                 // Oprava pro některé prohlížeče: výslovná aktualizace po různých zpožděních
                 setTimeout(updateLineNumbers, 50);
                 setTimeout(updateLineNumbers, 500);
@@ -1402,35 +1384,28 @@
             if (editorTextarea) {
                 addLineNumbers(editorTextarea);
             }
-
             // Zbytek existujícího kódu...
         });
 
         // Upravit způsob parsování a výpisu do konzole
         function parseAndDisplayWithLineNumbers() {
             const codeContent = editorTextarea.value;
-
             if (!codeContent || codeContent.trim() === '') {
                 console.warn('Žádný kód k parsování');
                 return;
             }
-
             console.clear();
             console.log('%cParsování CNC kódu', 'font-size: 14px; font-weight: bold;');
-
-            // Import modulu pro parsování a zavolání parseru
             import('./js/cnc-line-parser.js').then(module => {
                 const parsedProgram = module.parseProgram(codeContent);
 
                 console.log(`%cCelkem ${parsedProgram.length} řádků parsováno`, 'font-weight: bold;');
-
-                // Statistiky o typech řádků
                 const typeCounts = {};
+                // Statistiky o typech řádků
                 parsedProgram.forEach(line => {
                     if (!typeCounts[line.type]) typeCounts[line.type] = 0;
                     typeCounts[line.type]++;
                 });
-
                 console.group('Statistika typů řádků');
                 Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).forEach(([type, count]) => {
                     console.log(`${type}: ${count}`);
@@ -1444,17 +1419,13 @@
         // Aktualizovat event listenery pro tlačítko Parse a kliknutí na programy
         document.addEventListener('DOMContentLoaded', () => {
             // Existující kód...
-
             // Aktualizace event listeneru pro tlačítko Parse
             const parseButton = document.getElementById('parseButton');
             if (parseButton) {
                 parseButton.addEventListener('click', parseAndDisplayWithLineNumbers);
             }
-
             // ODSTRANĚNO: Duplicitní přepsání funkce addProgramToList
             // Ponechána pouze původní definice funkce
-
-            /* ...existing code... */
         });
 
         // Opravená funkce pro očíslování řádků v editoru, která řeší problém s posunutím čísel vůči řádkům textu
@@ -1462,7 +1433,6 @@
             if (!textarea) return;
 
             const container = textarea.parentElement;
-
             // Vytvořit element pro čísla řádků, pokud ještě neexistuje
             let lineNumbers = container.querySelector('.line-numbers');
             if (!lineNumbers) {
@@ -1482,7 +1452,7 @@
                         left: 0;
                         width: 40px;
                         height: calc(100% - 1.5rem);
-                        padding-top: 0;  /* Snížen padding-top pro lepší zarovnání */
+                        padding-top: 0;
                         background-color: #f5f5f5;
                         border-right: 1px solid #ddd;
                         font-family: monospace;
@@ -1494,11 +1464,11 @@
                         pointer-events: none;
                         overflow: hidden;
                         white-space: pre !important;
-                        line-height: 1.5;       /* Musí být shodné s textareou */
+                        line-height: 1.5;
                     }
                     .editor textarea {
                         padding-left: 45px !important;
-                        line-height: 1.5;       /* Musí být shodné s line-numbers */
+                        line-height: 1.5;
                         font-family: monospace;
                         font-size: 1rem;
                         white-space: pre !important;
@@ -1508,8 +1478,8 @@
                         word-wrap: normal !important;
                     }
                     .line-number {
-                        height: 1.5rem;         /* Pevná výška pro každé číslo řádku */
-                        padding-right: 5px;     /* Odsazení od pravého okraje */
+                        height: 1.5rem;
+                        padding-right: 5px;
                         box-sizing: border-box;
                     }
                 `;
@@ -1520,17 +1490,14 @@
             function updateLineNumbers() {
                 const text = textarea.value;
                 const lines = text.split('\n');
-
-                // Použijeme přístup s vytvářením elementů pro každé číslo řádku
                 lineNumbers.innerHTML = ''; // Vyčistit předchozí obsah
-
+                // Použijeme přístup s vytvářením elementů pro každé číslo řádku
                 for (let i = 0; i < lines.length; i++) {
                     const lineNumber = document.createElement('div');
                     lineNumber.className = 'line-number';
                     lineNumber.textContent = (i + 1).toString();
                     lineNumbers.appendChild(lineNumber);
                 }
-
                 // Zajištění stejné výšky a synchronizace scrollu
                 lineNumbers.style.height = textarea.clientHeight + 'px';
                 lineNumbers.scrollTop = textarea.scrollTop;
@@ -1543,16 +1510,13 @@
                 lineNumbers.scrollTop = textarea.scrollTop;
             });
             textarea.addEventListener('keydown', () => setTimeout(updateLineNumbers, 10));
-
-            // Upravit čísla řádků při změně velikosti
             new ResizeObserver(() => {
                 setTimeout(updateLineNumbers, 50);
             }).observe(textarea);
-
             // Oprava pro některé prohlížeče: výslovná aktualizace po různých zpožděních
             setTimeout(updateLineNumbers, 50);
             setTimeout(updateLineNumbers, 500);
-            setTimeout(updateLineNumbers, 1000); // Přidán ještě jeden timeout pro jistotu
+            setTimeout(updateLineNumbers, 1000);
         }
 
         // Kompletně přepracovaná funkce pro čísla řádků pomocí overlay elementu
@@ -1560,7 +1524,6 @@
             if (!textarea) return;
 
             const container = textarea.parentElement;
-
             // Odstranit existující line-numbers, pokud existuje
             const existingLineNumbers = container.querySelector('.line-numbers');
             if (existingLineNumbers) {
@@ -1575,7 +1538,6 @@
                 style.id = styleId;
                 document.head.appendChild(style);
             }
-
             style.textContent = `
                 .editor {
                     position: relative;
@@ -1627,18 +1589,15 @@
             // Funkce pro aktualizaci čísel řádků
             function updateLineNumbers() {
                 const lines = textarea.value.split('\n');
-                lineNumbers.innerHTML = '';
-
+                lineNumbers.innerHTML = ''; // Vyčistit předchozí obsah
                 // Vytvořit elementy pro každé číslo řádku
                 for (let i = 0; i < lines.length; i++) {
                     const lineElement = document.createElement('div');
                     lineElement.textContent = (i + 1).toString();
                     lineNumbers.appendChild(lineElement);
                 }
-
                 // Zajistit, že container má stejnou výšku jako textarea
                 lineNumbers.style.height = `${textarea.clientHeight - textarea.scrollTop}px`;
-
                 // Synchronizace scrollu
                 lineNumbers.scrollTop = textarea.scrollTop;
             }
@@ -1656,7 +1615,6 @@
                 lineNumbers.scrollTop = textarea.scrollTop;
             });
             textarea.addEventListener('keydown', () => {
-                // Aktualizovat po malém zpoždění pro zachycení změn
                 setTimeout(updateLineNumbers, 10);
             });
 
@@ -1672,11 +1630,11 @@
             // Inicializace
             adjustPosition();
             updateLineNumbers();
-
             // Vícenásobně volat aktualizaci pro jistotu
             setTimeout(updateLineNumbers, 50);
             setTimeout(updateLineNumbers, 200);
             setTimeout(updateLineNumbers, 500);
+            setTimeout(updateLineNumbers, 1000);
 
             // Vystavit funkci pro manuální aktualizaci
             textarea.updateLineNumbers = updateLineNumbers;
@@ -1686,10 +1644,8 @@
         // Přepsat handlery kliknutí na editorHandle, aby správně aktualizovaly číslování
         editorHandle.addEventListener('click', (e) => {
             if (isDragging) return;
-
             e.stopPropagation();
             isMiddleOpen = !isMiddleOpen;
-
             if (isMiddleOpen) {
                 const availableSpace = 100 - MIDDLE_HEIGHT;
                 const ratio = topHeight / (topHeight + bottomHeight);
@@ -1700,7 +1656,6 @@
                 topHeight = 99 * ratio;
                 bottomHeight = 99 * (1 - ratio);
             }
-
             updateHeights();
 
             // Počkat na dokončení animace a změnu velikosti
@@ -1728,7 +1683,6 @@
                     if (editorHandle._originalClickHandler) {
                         editorHandle._originalClickHandler.call(this, e);
                     }
-
                     // Po dokončení animace obnovit čísla řádků
                     setTimeout(function() {
                         refreshLineNumbers();
@@ -1740,7 +1694,6 @@
         // Zcela nová implementace číslování řádků
         function setupLineNumbers(textarea) {
             const container = textarea.parentElement;
-
             // Odstranit existující číslování řádků
             const existingLineNumbers = container.querySelector('.line-numbers');
             if (existingLineNumbers) {
@@ -1799,16 +1752,13 @@
                 // Získat text z textarea
                 const text = textarea.value;
                 const lines = text.split('\n');
-
                 // Vyčistit a naplnit kontejner čísly řádků
                 lineNumbers.innerHTML = '';
-
                 for (let i = 0; i < lines.length; i++) {
                     const div = document.createElement('div');
                     div.textContent = (i + 1);
                     lineNumbers.appendChild(div);
                 }
-
                 // Nastavit správnou výšku a pozici
                 lineNumbers.style.height = textarea.scrollHeight + 'px';
                 lineNumbers.scrollTop = textarea.scrollTop;
@@ -1825,13 +1775,12 @@
                 const resizeObserver = new ResizeObserver(function() {
                     updateLineNumbers();
                 });
-                resizeObserver.observe(textarea);
                 resizeObserver.observe(container);
+                resizeObserver.observe(textarea);
             }
 
             // Počáteční aktualizace
             updateLineNumbers();
-
             // Naplánovat více aktualizací pro jistotu
             setTimeout(updateLineNumbers, 100);
             setTimeout(updateLineNumbers, 500);
@@ -1848,11 +1797,9 @@
                 if (lineNumbers) {
                     lineNumbers.style.height = textarea.scrollHeight + 'px';
                     lineNumbers.scrollTop = textarea.scrollTop;
-
                     // Během scrollování může dojít k posunu, opravit to
                     const text = textarea.value;
                     const lines = text.split('\n');
-
                     if (lineNumbers.children.length !== lines.length) {
                         // Pokud se počet řádků změnil, vynutit kompletní obnovu
                         setupLineNumbers(textarea);
@@ -1867,10 +1814,8 @@
         // Nahradit handler na editorHandle
         editorHandle.addEventListener('click', (e) => {
             if (isDragging) return;
-
             e.stopPropagation();
             isMiddleOpen = !isMiddleOpen;
-
             if (isMiddleOpen) {
                 const availableSpace = 100 - MIDDLE_HEIGHT;
                 const ratio = topHeight / (topHeight + bottomHeight);
@@ -1881,7 +1826,6 @@
                 topHeight = 99 * ratio;
                 bottomHeight = 99 * (1 - ratio);
             }
-
             updateHeights();
 
             // Počkat na dokončení animace a pak aktualizovat čísla řádků
@@ -1891,101 +1835,204 @@
         // Odstranit ostatní překrývající se funkce addLineNumbers nebo je nahradit voláním refreshLineNumbers()
         // Zde by měly být odstraněny všechny duplicitní definice addLineNumbers
 
-        // Kompletně vyměním všechny handlery pro tlačítko editorHandle
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM načten - nastavuji nové handlery');
+        document.addEventListener('DOMContentLoaded', () => {
+            // Předchozí kód zůstává
+            loadCNCProgramFromJSON();
 
-            // Vyčistit všechny existující handlery pro editorHandle a nastavit nové
-            const editorHandle = document.getElementById('editorHandle');
-            if (editorHandle) {
-                // Odstranil jsem všechny existující event listenery
-                const newEditorHandle = editorHandle.cloneNode(true);
-                editorHandle.parentNode.replaceChild(newEditorHandle, editorHandle);
-
-                // Přidat nový event listener pro kliknutí
-                newEditorHandle.addEventListener('click', toggleEditorPanel);
-
-                console.log('Handler pro menu tlačítko nastaven');
+            const consoleButton = document.getElementById('consoleButton');
+            if (consoleButton) {
+                consoleButton.addEventListener('click', toggleMobileConsole);
             }
 
-            // Přidat fixní kód pro čísla řádků
-            setupLineNumbersInitial();
+            setupMobileConsoleOutput();
+
+            // KOMPLETNÍ NÁHRADA VŠECH UDÁLOSTÍ SPOJENÝCH S EDITOREM A TLAČÍTKEM MENU
+
+            // Najít potřebné elementy
+            const editorHandle = document.getElementById('editorHandle');
+            if (!editorHandle) return;
+
+            // Vytvořit nový element tlačítka Menu bez jakýchkoli existujících handlerů
+            const newEditorHandle = document.createElement('div');
+            newEditorHandle.id = 'editorHandle';
+            newEditorHandle.className = 'editor-label';
+            newEditorHandle.textContent = 'Menu';
+
+            // Nahradit starý element novým - úplně vyčistí všechny předchozí event listenery
+            if (editorHandle.parentNode) {
+                editorHandle.parentNode.replaceChild(newEditorHandle, editorHandle);
+            }
+
+            // Deklarace proměnných pro tažení
+            let isDragging = false;
+            let startY, startTopHeight, startBottomHeight;
+
+            // 1. Přidat event listener pro kliknutí - pouze pro přepínání panelu
+            newEditorHandle.addEventListener('click', function(e) {
+                // Pokud probíhá tažení, nezpracovávat kliknutí
+                if (isDragging) return;
+
+                console.log('Menu tlačítko kliknuto - přepínání panelu');
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Přepnout stav otevření
+                isMiddleOpen = !isMiddleOpen;
+
+                // Nastavit výšky podle stavu
+                if (isMiddleOpen) {
+                    console.log('Otevírám panel editoru');
+                    const availableSpace = 100 - MIDDLE_HEIGHT;
+                    topHeight = availableSpace * 0.7; // 70% horní panel
+                    bottomHeight = availableSpace * 0.3; // 30% dolní panel
+                } else {
+                    console.log('Zavírám panel editoru');
+                    topHeight = 99;
+                    bottomHeight = 1;
+                }
+
+                // Aktualizovat výšky elementů
+                topEditor.style.height = `${topHeight}vh`;
+                middleWindow.style.height = `${isMiddleOpen ? MIDDLE_HEIGHT : 1}vh`;
+                bottomEditor.style.height = `${bottomHeight}vh`;
+                middleContent.classList.toggle('hidden', !isMiddleOpen);
+
+                // Aktualizovat číslování řádků po dokončení animace
+                setTimeout(function() {
+                    setupSimpleLineNumbers();
+                    console.log('Číslování řádků aktualizováno po přepnutí');
+                }, 300);
+            });
+
+            // 2. Přidat event listener pro zahájení tažení
+            newEditorHandle.addEventListener('mousedown', function(e) {
+                // Ignorovat ostatní tlačítka myši kromě hlavního (levého)
+                if (e.button !== 0) return;
+
+                console.log('Menu mousedown - zahajuji tažení');
+                isDragging = true;
+                startY = e.clientY;
+                startTopHeight = topHeight;
+                startBottomHeight = bottomHeight;
+
+                // Změnit kurzor
+                document.body.style.cursor = 'row-resize';
+
+                // Zabránit výchozímu chování
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            // 3. Přidat event listener pro pohyb myši - reagovat pouze pokud je aktivní tažení
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+
+                // Vypočítat změnu výšky
+                const deltaY = e.clientY - startY;
+                const deltaPercent = (deltaY / window.innerHeight) * 100;
+
+                // Vypočítat nové výšky panelů
+                const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
+                const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+                const newBottomHeight = availableSpace - newTopHeight;
+
+                // Nastavit nové výšky pouze pokud jsou v platném rozsahu
+                if (newBottomHeight >= 20) {
+                    topHeight = newTopHeight;
+                    bottomHeight = newBottomHeight;
+                    updateHeights();
+                    console.log(`Tažení: topHeight=${topHeight.toFixed(1)}, bottomHeight=${bottomHeight.toFixed(1)}`);
+                }
+            });
+
+            // 4. Přidat event listener pro ukončení tažení
+            document.addEventListener('mouseup', function() {
+                if (!isDragging) return;
+
+                console.log('Ukončuji tažení');
+                isDragging = false;
+                document.body.style.cursor = '';
+
+                // Aktualizovat číslování řádků
+                setTimeout(function() {
+                    setupSimpleLineNumbers();
+                }, 100);
+            });
+
+            // 5. Přidat podporu pro dotyková zařízení
+            newEditorHandle.addEventListener('touchstart', function(e) {
+                console.log('Touch start na Menu');
+                isDragging = true;
+                startY = e.touches[0].clientY;
+                startTopHeight = topHeight;
+                startBottomHeight = bottomHeight;
+
+                e.preventDefault(); // Důležité pro zabránění scrollování stránky
+            }, { passive: false });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+
+                const touch = e.touches[0];
+                const deltaY = touch.clientY - startY;
+                const deltaPercent = (deltaY / window.innerHeight) * 100;
+
+                const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
+                const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+                const newBottomHeight = availableSpace - newTopHeight;
+
+                if (newBottomHeight >= 20) {
+                    topHeight = newTopHeight;
+                    bottomHeight = newBottomHeight;
+                    updateHeights();
+                }
+
+                e.preventDefault(); // Zabránit scrollování stránky
+            }, { passive: false });
+
+            document.addEventListener('touchend', function() {
+                if (!isDragging) return;
+
+                console.log('Touch end - ukončuji tažení');
+                isDragging = false;
+
+                // Aktualizovat číslování řádků
+                setTimeout(function() {
+                    setupSimpleLineNumbers();
+                }, 100);
+            });
+
+            console.log('Nové event handlery pro Menu tlačítko úspěšně nastaveny');
         });
 
-        // Nová funkce pro přepnutí panelu editoru
-        function toggleEditorPanel(e) {
-            console.log('Kliknuto na tlačítko Menu');
-            e.stopPropagation();
-
-            // Nastavit proměnné pro výšky a stavy
-            isMiddleOpen = !isMiddleOpen;
-
-            if (isMiddleOpen) {
-                console.log('Otevírám panel editoru');
-                const availableSpace = 100 - MIDDLE_HEIGHT;
-                topHeight = availableSpace * 0.7; // 70% horní panel
-                bottomHeight = availableSpace * 0.3; // 30% dolní panel
-            } else {
-                console.log('Zavírám panel editoru');
-                topHeight = 99;
-                bottomHeight = 1;
-            }
-
-            // Aktualizovat výšky elementů
-            topEditor.style.height = `${topHeight}vh`;
-            middleWindow.style.height = `${isMiddleOpen ? MIDDLE_HEIGHT : 1}vh`;
-            bottomEditor.style.height = `${bottomHeight}vh`;
-
-            // Změnit viditelnost obsahu
-            middleContent.classList.toggle('hidden', !isMiddleOpen);
-
-            // Aktualizovat číslování řádků v editoru po krátké prodlevě
-            setTimeout(function() {
-                setupLineNumbersInitial();
-                console.log('Číslování řádků aktualizováno');
-            }, 300);
-        }
-
-        // Nová funkce pro inicializaci číslování řádků, která není závislá na předchozích implementacích
-        function setupLineNumbersInitial() {
+        // Přidat novou jednodušší implementaci číslování řádků, která nepřekáží
+        function setupSimpleLineNumbers() {
             const textarea = document.querySelector('#bottomEditor textarea');
             if (!textarea) {
-                console.warn('Nenalezen textarea pro číslování řádků');
+                console.warn('Textarea nenalezen');
                 return;
             }
 
-            console.log('Inicializuji číslování řádků');
-            const container = textarea.parentElement;
+            console.log('Vytvářím nové jednoduché číslování řádků');
 
-            // Odstranit existující číslování řádků
-            let lineNumbers = container.querySelector('.line-numbers');
-            if (lineNumbers) {
-                lineNumbers.remove();
+            // Odstranit případné existující číslování
+            const container = textarea.parentElement;
+            const oldLineNumbers = container.querySelector('.line-numbers');
+            if (oldLineNumbers) {
+                oldLineNumbers.remove();
             }
 
             // Vytvořit nový element pro čísla řádků
-            lineNumbers = document.createElement('div');
+            const lineNumbers = document.createElement('div');
             lineNumbers.className = 'line-numbers';
             container.insertBefore(lineNumbers, textarea);
 
-            // Přidat CSS styly pro číslování řádků
-            let style = document.getElementById('line-numbers-css');
-            if (!style) {
-                style = document.createElement('style');
-                style.id = 'line-numbers-css';
-                style.textContent = `
-                    .editor {
-                        position: relative;
-                    }
-                    .editor textarea {
-                        padding-left: 45px !important;
-                        font-family: monospace;
-                        font-size: 1rem;
-                        line-height: 1.5;
-                        white-space: pre !important;
-                        tab-size: 4;
-                        -moz-tab-size: 4;
-                    }
+            // Přidáme základní styly v tagu style na stránce
+            let styleEl = document.getElementById('simple-line-numbers-style');
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = 'simple-line-numbers-style';
+                styleEl.textContent = `
                     .line-numbers {
                         position: absolute;
                         top: 1.5rem;
@@ -1998,69 +2045,59 @@
                         font-size: 1rem;
                         color: #777;
                         text-align: right;
-                        z-index: 2;
-                        user-select: none;
-                        pointer-events: none;
                         padding: 0;
                         overflow: hidden;
+                        user-select: none;
+                        pointer-events: none;
+                        z-index: 2;
                     }
-                    .line-numbers > div {
+                    .editor textarea {
+                        padding-left: 45px !important;
+                        font-family: monospace;
+                        white-space: pre !important;
+                        tab-size: 4;
+                    }
+                    .line-number {
+                        padding-right: 5px;
                         height: 1.5rem;
                         line-height: 1.5rem;
-                        padding-right: 5px;
                     }
                 `;
-                document.head.appendChild(style);
+                document.head.appendChild(styleEl);
             }
 
             // Funkce pro aktualizaci čísel řádků
             function updateLineNumbers() {
                 const lines = textarea.value.split('\n');
-                let html = '';
+                lineNumbers.innerHTML = '';
 
                 for (let i = 0; i < lines.length; i++) {
-                    html += `<div>${i+1}</div>`;
+                    const div = document.createElement('div');
+                    div.className = 'line-number';
+                    div.textContent = (i + 1);
+                    lineNumbers.appendChild(div);
                 }
 
-                lineNumbers.innerHTML = html;
+                lineNumbers.style.height = textarea.scrollHeight + 'px';
                 lineNumbers.scrollTop = textarea.scrollTop;
             }
 
-            // Nastavit event listenery
+            // Přidat event listenery
             textarea.addEventListener('input', updateLineNumbers);
             textarea.addEventListener('scroll', function() {
                 lineNumbers.scrollTop = textarea.scrollTop;
             });
 
-            // První aktualizace čísel řádků
+            // Inicializace a následné aktualizace
             updateLineNumbers();
-
-            // Pro jistotu přidat více aktualizací po časové prodlevě
             setTimeout(updateLineNumbers, 100);
-            setTimeout(updateLineNumbers, 500);
-            console.log('Číslování řádků inicializováno');
+
+            // Exportovat funkci pro pozdější použití
+            window.updateLineNumbers = updateLineNumbers;
+
+            console.log('Číslování řádků úspěšně nastaveno');
+            return updateLineNumbers;
         }
-
-        // Odstraňuji duplicitní kód a ponechávám pouze novou implementaci
-        // ...existing code...
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Odstranit tlačítko Parse z horního panelu programů
-            const parseButtonTop = document.getElementById('parseButtonTop');
-            if (parseButtonTop) {
-                parseButtonTop.remove();
-            }
-
-            // Odstranit i styly pro toto tlačítko, pokud existují
-            const parseButtonStyle = document.querySelector('style[id="parse-button-style"]');
-            if (parseButtonStyle) {
-                parseButtonStyle.remove();
-            }
-
-            // ...existing code...
-        });
-
-        // ...existing code...
 
         // Přidat event listener pro tlačítko konzole
         const consoleButton = document.getElementById('consoleButton');
@@ -2095,9 +2132,8 @@
             function addLogEntry(message, type = 'log') {
                 const entry = document.createElement('div');
                 entry.className = `log-entry ${type}`;
-
-                // Převést různé typy vstupů na string
                 let messageText;
+                // Převést různé typy vstupů na string
                 if (typeof message === 'object') {
                     try {
                         messageText = JSON.stringify(message, null, 2);
@@ -2107,7 +2143,6 @@
                 } else {
                     messageText = String(message);
                 }
-
                 entry.textContent = messageText;
                 consoleContent.appendChild(entry);
                 consoleContent.scrollTop = consoleContent.scrollHeight;
@@ -2118,22 +2153,18 @@
                 originalLog.apply(console, args);
                 args.forEach(msg => addLogEntry(msg, 'log'));
             };
-
             console.error = function(...args) {
                 originalError.apply(console, args);
                 args.forEach(msg => addLogEntry(msg, 'error'));
             };
-
             console.warn = function(...args) {
                 originalWarn.apply(console, args);
                 args.forEach(msg => addLogEntry(msg, 'warn'));
             };
-
             console.info = function(...args) {
                 originalInfo.apply(console, args);
                 args.forEach(msg => addLogEntry(msg, 'info'));
             };
-
             console.clear = function() {
                 originalClear.apply(console);
                 consoleContent.innerHTML = '';
@@ -2141,5 +2172,4 @@
             };
         }
     </script>
-</body>
-</html>
+</body></html>
