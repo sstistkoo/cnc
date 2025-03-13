@@ -220,10 +220,62 @@ export function parseProgram(program) {
     const lines = program.split('\n');
     const parsedLines = [];
 
+    // Přidáme proměnné pro sledování stavu
+    let currentPosition = { X: 0, Y: 0, Z: 0 };
+    let isAbsoluteMode = true; // Výchozí režim je G90 (absolutní)
+
     // Parsovat každý řádek
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const parsedLine = parseLine(line, i + 1);
+
+        // Detekovat změny režimu G90/G91
+        if (parsedLine.gCodes) {
+            if (parsedLine.gCodes.includes(90)) {
+                isAbsoluteMode = true;
+            } else if (parsedLine.gCodes.includes(91)) {
+                isAbsoluteMode = false;
+            }
+        }
+
+        // Převést souřadnice na absolutní, pokud je potřeba
+        if (parsedLine.coordinates) {
+            const absoluteCoords = toAbsoluteCoordinates(parsedLine.coordinates, currentPosition, isAbsoluteMode);
+
+            // Uložit absolutní souřadnice do výsledku
+            parsedLine.absoluteCoordinates = absoluteCoords;
+
+            // Pokud je to příkaz pohybu, aktualizovat aktuální pozici
+            if (parsedLine.type === 'rapid_move' || parsedLine.type === 'linear_move' ||
+                parsedLine.type === 'arc_cw' || parsedLine.type === 'arc_ccw') {
+
+                // Aktualizovat pouze souřadnice, které byly zadány v programu
+                for (const [axis, value] of Object.entries(absoluteCoords)) {
+                    currentPosition[axis] = value;
+                }
+            }
+        }
+
+        // Pokud je to G2/G3 s parametrem CR, dopočítat střed
+        if ((parsedLine.type === 'arc_cw' || parsedLine.type === 'arc_ccw') &&
+            parsedLine.radius && parsedLine.absoluteCoordinates) {
+
+            // Počáteční bod je aktuální pozice před příkazem
+            const startPoint = { X: currentPosition.X, Y: currentPosition.Y };
+            // Koncový bod je nová pozice
+            const endPoint = {
+                X: parsedLine.absoluteCoordinates.X !== undefined ? parsedLine.absoluteCoordinates.X : startPoint.X,
+                Y: parsedLine.absoluteCoordinates.Y !== undefined ? parsedLine.absoluteCoordinates.Y : startPoint.Y
+            };
+
+            // Vypočítat střed oblouku
+            const isClockwise = parsedLine.type === 'arc_cw';
+            const radius = Math.abs(parsedLine.radius);
+
+            // Přidat vypočtený střed do výsledku
+            parsedLine.calculatedCenter = calculateArcCenter(startPoint, endPoint, radius, isClockwise);
+        }
+
         parsedLines.push(parsedLine);
 
         // Vypisovat do konzole každý parsovaný řádek - upraven styl pro lepší čitelnost
@@ -234,4 +286,71 @@ export function parseProgram(program) {
     }
 
     return parsedLines;
+}
+
+// NOVÁ FUNKCE: Výpočet středu kružnice pro G2/G3 s CR parametrem
+/**
+ * Vypočítá střed kružnice z počátečního a koncového bodu, poloměru a směru (G2/G3)
+ * @param {Object} startPoint - Počáteční bod {X, Y}
+ * @param {Object} endPoint - Koncový bod {X, Y}
+ * @param {number} radius - Poloměr kružnice (vždy kladný)
+ * @param {boolean} clockwise - true pro G2 (ve směru), false pro G3 (proti směru)
+ * @returns {Object} - Střed kružnice {X, Y}
+ */
+function calculateArcCenter(startPoint, endPoint, radius, clockwise) {
+    // Vzdálenost mezi body
+    const dx = endPoint.X - startPoint.X;
+    const dy = endPoint.Y - startPoint.Y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Kontrola, zda je poloměr dostatečně velký
+    if (radius < distance / 2) {
+        console.warn("Varování: Poloměr je příliš malý pro oblouk mezi danými body");
+        radius = distance / 2 + 0.001; // Malá korekce pro výpočet
+    }
+
+    // Vypočítat poloviční vzdálenost mezi body
+    const h = Math.sqrt(radius * radius - (distance / 2) * (distance / 2));
+
+    // Střed úsečky mezi počátečním a koncovým bodem
+    const midX = startPoint.X + dx / 2;
+    const midY = startPoint.Y + dy / 2;
+
+    // Vypočítat vyosení středu kružnice od středu úsečky
+    // Pro G2 (ve směru) a G3 (proti směru) použijeme správnou stranu
+    // Zaměňujeme hodnoty pro clockwise/counterclockwise, protože
+    // v CNC směr G2 je po směru hodinových ručiček, což je matematicky opačně
+    const offsetX = -h * dy / distance * (clockwise ? -1 : 1);
+    const offsetY = h * dx / distance * (clockwise ? -1 : 1);
+
+    // Střed kružnice
+    return {
+        X: midX + offsetX,
+        Y: midY + offsetY
+    };
+}
+
+/**
+ * Převádí souřadnice z inkrementálních na absolutní
+ * @param {Object} coordinates - Souřadnice k převodu
+ * @param {Object} currentPosition - Aktuální pozice
+ * @param {boolean} isAbsolute - true pokud jsou již souřadnice absolutní (G90)
+ * @returns {Object} - Absolutní souřadnice
+ */
+function toAbsoluteCoordinates(coordinates, currentPosition, isAbsolute) {
+    if (!coordinates) return coordinates;
+    if (isAbsolute) return coordinates;
+
+    const result = {};
+
+    // Pro každou souřadnici přičteme aktuální pozici
+    for (const [axis, value] of Object.entries(coordinates)) {
+        if (currentPosition.hasOwnProperty(axis)) {
+            result[axis] = currentPosition[axis] + value;
+        } else {
+            result[axis] = value; // Pokud nemáme předchozí hodnotu, použijeme tu stávající
+        }
+    }
+
+    return result;
 }

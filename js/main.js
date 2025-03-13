@@ -1,11 +1,13 @@
 // Main - hlavní inicializační soubor
 
 // Import modulů
+import { cncParametersManager } from './cnc-parameters-manager.js';
 import { initializeLayout, toggleLeftPanel, toggleRightPanel, toggleTopPanel, updateGlobalMenuState, handleMouseDown } from './layout-manager.js';
 import { initializeEditor, setupImprovedLineNumbers } from './editor-manager.js';
 import { initializeProgramManager, loadCNCProgramFromJSON } from './program-manager.js';
 import { initializeModals } from './modal-manager.js';
 import { initializeConsole } from './console-manager.js';
+import { setupGlobalHistoryListener } from './dynamic-content-helper.js';
 
 /**
  * Inicializace celé aplikace
@@ -31,6 +33,12 @@ function initializeApp() {
         initializeModals();
         initializeConsole();
 
+        // Inicializovat správce parametrů
+        cncParametersManager.initialize();
+
+        // Přidat globální listener pro tlačítka historie
+        setupGlobalHistoryListener();
+
         // Exponování funkcí do globálního prostoru pro použití v inline handlery
         window.toggleLeftPanel = toggleLeftPanel;
         window.toggleRightPanel = toggleRightPanel;
@@ -49,6 +57,14 @@ function initializeApp() {
         if (parseButton) {
             parseButton.addEventListener('click', function() {
                 parseCurrentProgram();
+            });
+        }
+
+        // Přidat event listener pro tlačítko CNC parametrů
+        const cncParamsButton = document.getElementById('cncParamsButton');
+        if (cncParamsButton) {
+            cncParamsButton.addEventListener('click', function() {
+                cncParametersManager.showParametersModal();
             });
         }
 
@@ -237,12 +253,25 @@ function parseCurrentProgram() {
         const code = editorTextarea.value;
         const parsedProgram = module.parseProgram(code);
 
+        // Při parsování také zkontroluj parametry CNC programu
+        cncParametersManager.parseParameters(code);
+
+        // Rozšíření: Přiřadit vyhodnocené parametry k parsovaným řádkům
+        if (window.cncParserData) {
+            window.cncParserData.parameters = {};
+            cncParametersManager.parameters.forEach((value, key) => {
+                if (typeof value === 'number') {
+                    window.cncParserData.parameters[key] = value;
+                }
+            });
+        }
+
         console.log(`Úspěšně parsováno ${parsedProgram.length} řádků.`);
 
         // Statistiky o typech řádků
         const typeCounts = {};
         parsedProgram.forEach(line => {
-            if (!typeCounts[line.type]) typeCounts[line.type] = 0;
+            if (!typeCounts[line.type]) typeCounts[line.type]++;
             typeCounts[line.type]++;
         });
 
@@ -397,11 +426,19 @@ function displayParsedLines(parsedProgram, content) {
             mCodes = line.mCodes.map(code => `M${code}`).join(', ');
         }
 
-        // Souřadnice
+        // Souřadnice - OPRAVENO pro bezpečné zpracování hodnot
         let coords = '';
         if (line.coordinates) {
             const coordStr = Object.entries(line.coordinates)
-                .map(([key, value]) => `${key}${value >= 0 ? '+' : ''}${value.toFixed(3)}`)
+                .map(([key, value]) => {
+                    // Bezpečná kontrola, jestli hodnota je číslo a lze na ní volat toFixed
+                    const isNumber = typeof value === 'number' && !isNaN(value);
+                    const formattedValue = isNumber ?
+                        `${value >= 0 ? '+' : ''}${value.toFixed(3)}` :
+                        String(value); // Pro ne-číselné hodnoty použijeme String()
+
+                    return `${key}${formattedValue}`;
+                })
                 .join(' ');
             coords = coordStr;
         }
@@ -422,7 +459,33 @@ function displayParsedLines(parsedProgram, content) {
     });
 
     html += '</table>';
-    content.innerHTML = html;
+
+    // Přidat novou tabulku s R parametry na začátek obsahu
+    let parametersHtml = '';
+    if (window.cncParserData && window.cncParserData.parameters) {
+        parametersHtml = '<div class="parameter-section wide">';
+        parametersHtml += '<h4>Parametry použité v programu</h4>';
+        parametersHtml += '<table class="parameter-table">';
+        parametersHtml += '<tr><th>Parametr</th><th>Hodnota</th></tr>';
+
+        // Seřadit parametry podle čísla
+        const sortedParams = Object.entries(window.cncParserData.parameters).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+        for (const [paramNum, value] of sortedParams) {
+            const formattedValue = typeof value === 'number' ?
+                value.toFixed(4).replace(/\.?0+$/, '') : value;
+
+            parametersHtml += `<tr>
+                <td>R${paramNum}</td>
+                <td>R${paramNum}=${formattedValue}</td>
+            </tr>`;
+        }
+
+        parametersHtml += '</table></div><hr>';
+    }
+
+    // Vložit před hlavní tabulku parsovaných řádků
+    content.innerHTML = parametersHtml + html;
 }
 
 /**

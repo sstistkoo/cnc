@@ -859,6 +859,96 @@ body {
     }
 }
 
+/* Styly pro zobrazení historie parametrů */
+.parameter-table .show-history {
+    background-color: #e5e7eb;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.parameter-table .show-history:hover {
+    background-color: #d1d5db;
+}
+
+.param-history {
+    margin-top: 5px;
+    padding: 5px;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* Vylepšení pro zobrazení historie parametrů */
+.param-history {
+    max-height: 150px;
+    overflow-y: auto;
+    display: none; /* Výchozí stav je skrytý */
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.param-history.visible {
+    display: block;
+}
+
+.show-history {
+    cursor: pointer;
+    background-color: #e5e7eb;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    transition: background-color 0.2s ease;
+}
+
+.show-history:hover {
+    background-color: #d1d5db;
+}
+
+.history-entry {
+    padding: 3px 0;
+    border-bottom: 1px dashed #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+}
+
+.history-entry:last-child {
+    border-bottom: none;
+}
+
+.history-entry {
+    margin-bottom: 2px;
+    padding: 2px 0;
+    border-bottom: 1px dashed #e5e7eb;
+}
+
+.history-entry:last-child {
+    border-bottom: none;
+}
+
+.history-line {
+    font-weight: bold;
+    color: #4b5563;
+}
+
+.history-value {
+    color: #1f2937;
+}
+
+/* Specifický styl pro zobrazení parametrů jako R=hodnota */
+.parameter-table td:nth-child(2) {
+    font-family: monospace;
+    white-space: nowrap;
+}
+
 /* Styly pro zobrazení programů v pravém panelu */
 .program-container {
     display: flex;
@@ -1150,4 +1240,259 @@ body.can-resize-editors {
 .top-panel {
     transition: transform 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
     z-index: 1100;
+}
+
+/* Styly pro tabulky parametrů */
+.parameters-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.parameter-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.parameter-table th,
+.parameter-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+}
+
+.parameter-table th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+    color: #4b5563;
+}
+
+.parameter-table tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+.parameter-table tr:hover {
+    background-color: #e5e7eb;
+}
+
+/* Speciální styl pro CNC parametry tlačítko */
+#cncParamsButton {
+    background-color: #3b82f6;
+    color: white;
+}
+
+#cncParamsButton:hover {
+    background-color: #2563eb;
+}
+
+/* Styl pro modální okno s parametry */
+#cncParametersModal .modal-content {
+    max-width: 900px;
+}
+
+/* Styly pro zobrazení parametrů */
+.parameter-count {
+    font-size: 0.9rem;
+    font-weight: normal;
+    color: #6b7280;
+    margin-left: 10px;
+}
+
+.parameter-section h4 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Úprava vzhledu tabulky parametrů */
+.parameter-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.parameter-table th,
+.parameter-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+}
+
+.parameter-table th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+    color: #4b5563;
+}
+
+/* Specifické styly pro různé typy buněk */
+.parameter-table td:nth-child(1) {
+    font-family: 'Consolas', monospace;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.parameter-table td:nth-child(2) {
+    font-family: monospace;
+    color: #2563eb;
+    white-space: nowrap;
+}
+
+.parameter-table td:nth-child(4) {
+    font-family: monospace;
+    color: #6b7280;
+}
+
+/* Vylepšení pro zobrazení historie */
+.param-history {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* Vylepšené styly pro zobrazení historie */
+.param-history {
+    max-height: 200px;
+    overflow-y: auto;
+    display: none; /* Výchozí stav je skrytý */
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.param-history.visible {
+    display: block;
+}
+
+.show-history {
+    cursor: pointer;
+    background-color: #e5e7eb;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    transition: background-color 0.2s ease;
+}
+
+.show-history:hover {
+    background-color: #d1d5db;
+}
+
+.history-entry {
+    padding: 4px 0;
+    border-bottom: 1px dashed #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+}
+
+.history-value {
+    font-family: monospace;
+    color: #2563eb;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Styl pro nedefinované parametry */
+.undefined-param {
+    color: #ef4444;
+    font-style: italic;
+}
+
+/* Styl pro aktuální hodnoty parametrů */
+.current-param {
+    color: #059669;
+    font-weight: normal;
+}
+
+/* Styl pro řádky historie - změnit na flexbox pro lepší rozvržení */
+.history-entry {
+    padding: 4px 0;
+    border-bottom: 1px dashed #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+}
+
+/* Zvýraznění výrazů s parametry */
+.history-value span.param-ref {
+    color: #059669;
+    font-weight: bold;
+}
+
+/* Styl pro zvýraznění řídících příkazů */
+.flow-command {
+    font-family: monospace;
+    color: #9333ea; /* Fialová barva pro řídící příkazy */
+    font-weight: bold;
+}
+
+/* Vylepšení pro zobrazení historie */
+.history-value {
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+/* Styl pro zdůraznění výrazů s chybějícími parametry */
+.history-value .missing-param {
+    color: #dc2626; /* Červená barva */
+    font-weight: bold;
+}
+
+/* Styly pro tabulku s pořadím vyhodnocení parametrů */
+.order-table {
+    margin-bottom: 20px;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.order-table th,
+.order-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+}
+
+.order-table th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+}
+
+/* Zvýraznit řádky s parametry v pořadí definice */
+.order-table tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+.order-table tr:hover {
+    background-color: #f0f9ff;
+}
+
+/* Info text s vysvětlením */
+.info-text {
+    margin-bottom: 15px;
+    color: #4b5563;
+    font-style: italic;
+}
+
+/* Vylepšení zobrazení hodnot parametrů v historii */
+.history-value .param-reference {
+    font-weight: bold;
+    color: #2563eb;
+}
+
+/* Vysvětlení aktuálních hodnot v historii */
+.param-current-value {
+    color: #059669;
+    font-style: italic;
+}
+
+/* Zvýraznění případných problémových parametrů */
+.missing-dependency {
+    color: #dc2626;
+    font-weight: bold;
 }
