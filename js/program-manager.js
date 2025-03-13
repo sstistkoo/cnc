@@ -6,22 +6,61 @@ let activeProgram = null;
 /**
  * Funkce pro přidání programu do seznamu
  * @param {Object} program - Objekt programu
- * @param {HTMLElement} programList - Element seznamu programů
+ * @param {HTMLElement} programList - Element seznamu programů (může být null, pak se použije pravý panel)
  * @param {boolean} activate - Má být program aktivován po přidání?
  * @returns {HTMLElement} - Vytvořený element programu
  */
 function addProgramToList(program, programList, activate = false) {
-    const programItem = document.createElement('div');
-    programItem.className = 'program-item';
+    // Pokud není zadán konkrétní seznam, použijeme pravý panel
+    if (!programList) {
+        programList = document.getElementById('rightPanelProgramList');
+    }
 
+    if (!programList) {
+        console.error('Nenalezen kontejner pro programy');
+        return null;
+    }
+
+    // Vytvořím element pro program podle typu panelu
+    let programItem;
     let displayName = program.name;
     // Odstranit příponu .spf z názvu, pokud existuje
     if (program.type === 'SPF' && displayName.toLowerCase().endsWith('.spf')) {
         displayName = displayName.substring(0, displayName.length - 4);
     }
 
-    programItem.textContent = displayName;
-    programItem.dataset.originalName = program.name; // Uchovat původní název pro odkazy
+    // Zjistit počet řádků kódu
+    let codeLines = 0;
+    if (program.code) {
+        if (Array.isArray(program.code)) {
+            codeLines = program.code.length;
+        } else {
+            codeLines = program.code.split('\n').length;
+        }
+    }
+
+    // Kontrola jestli jde o pravý panel (třída "panel-section")
+    if (programList.classList.contains('panel-section')) {
+        // Pokud jde o pravý panel, vytvoříme bohatší element
+        programItem = document.createElement('div');
+        programItem.className = 'right-panel-program';
+
+        // Struktura pro zobrazení programu
+        programItem.innerHTML = `
+            <div class="program-name">${displayName}</div>
+            <div class="program-meta">
+                <div>Typ: ${program.type || 'Neurčeno'}</div>
+                <div>Řádků: ${codeLines}</div>
+            </div>
+        `;
+    } else {
+        // Pro ostatní případy (např. horní panel) použít původní styl
+        programItem = document.createElement('div');
+        programItem.className = 'program-item';
+        programItem.textContent = displayName;
+    }
+
+    programItem.dataset.originalName = program.name;
     programItem.dataset.code = Array.isArray(program.code) ? program.code.join('\n') : program.code;
 
     // Načíst kód programu do editoru a parsovat
@@ -31,10 +70,12 @@ function addProgramToList(program, programList, activate = false) {
             editorTextarea.value = programItem.dataset.code;
         }
 
+        // Zrušit aktivní třídu u všech programů (v obou panelech)
+        document.querySelectorAll('.program-item.active, .right-panel-program.active').forEach(item => {
+            item.classList.remove('active');
+        });
+
         // Zvýraznění aktivního programu
-        if (activeProgram) {
-            activeProgram.classList.remove('active');
-        }
         programItem.classList.add('active');
         activeProgram = programItem;
 
@@ -79,6 +120,12 @@ function addProgramToList(program, programList, activate = false) {
         if (editorTextarea) {
             editorTextarea.value = programItem.dataset.code;
         }
+
+        // Zrušit aktivní třídu u všech programů
+        document.querySelectorAll('.program-item.active, .right-panel-program.active').forEach(item => {
+            item.classList.remove('active');
+        });
+
         programItem.classList.add('active');
         activeProgram = programItem;
 
@@ -134,7 +181,8 @@ function updateActiveProgramInfo(program) {
 function handleFileSelection(files) {
     if (!files || files.length === 0) return;
 
-    const programList = document.getElementById('programList');
+    // Pravý panel pro zobrazení programů
+    const programList = document.getElementById('rightPanelProgramList');
     if (!programList) return;
 
     // Vyčistit seznam, pokud bylo vybráno více souborů najednou
@@ -166,21 +214,19 @@ function handleFileSelection(files) {
             if (typeof toggleLeftPanel === 'function') {
                 toggleLeftPanel();
             }
+
+            // Otevřít pravý panel, aby uživatel viděl načtené programy
+            const toggleRightPanel = window.toggleRightPanel;
+            if (typeof toggleRightPanel === 'function') {
+                // Pokud není otevřen, otevřeme ho
+                const rightPanel = document.getElementById('rightPanel');
+                if (rightPanel && !rightPanel.classList.contains('open')) {
+                    toggleRightPanel();
+                }
+            }
         };
         reader.readAsText(file);
     });
-
-    // Otevřít panel s programy, pokud ještě není otevřený
-    const topPanel = document.getElementById('topPanel');
-    if (topPanel && topPanel.classList.contains('hidden')) {
-        // Použít exportovanou funkci toggleTopPanel, pokud je k dispozici
-        const toggleTopPanel = window.toggleTopPanel;
-        if (typeof toggleTopPanel === 'function') {
-            toggleTopPanel();
-        } else {
-            topPanel.classList.remove('hidden');
-        }
-    }
 }
 
 /**
@@ -198,7 +244,9 @@ function loadCNCProgramFromJSON() {
         })
         .then(data => {
             console.log('Program načten:', data.name);
-            const programList = document.getElementById('programList');
+
+            // Použití pravého panelu pro zobrazení programů
+            const programList = document.getElementById('rightPanelProgramList');
             if (!programList) return;
 
             // Vyčistit a znovu naplnit seznam programů
@@ -214,15 +262,14 @@ function loadCNCProgramFromJSON() {
                 addProgramToList(program, programList);
             });
 
-            // Otevřít panel s programy
-            const topPanel = document.getElementById('topPanel');
-            if (topPanel && topPanel.classList.contains('hidden')) {
-                // Použít exportovanou funkci toggleTopPanel, pokud je k dispozici
-                const toggleTopPanel = window.toggleTopPanel;
-                if (typeof toggleTopPanel === 'function') {
-                    toggleTopPanel();
+            // Otevřít pravý panel s programy
+            const rightPanel = document.getElementById('rightPanel');
+            if (rightPanel && !rightPanel.classList.contains('open')) {
+                const toggleRightPanel = window.toggleRightPanel;
+                if (typeof toggleRightPanel === 'function') {
+                    toggleRightPanel();
                 } else {
-                    topPanel.classList.remove('hidden');
+                    rightPanel.classList.add('open');
                 }
             }
         })
@@ -243,7 +290,8 @@ function loadProgramsFromJson(jsonContent) {
             return;
         }
 
-        const programList = document.getElementById('programList');
+        // Použití pravého panelu pro zobrazení programů
+        const programList = document.getElementById('rightPanelProgramList');
         if (!programList) return;
 
         programList.innerHTML = '';
@@ -258,16 +306,14 @@ function loadProgramsFromJson(jsonContent) {
             addProgramToList(program, programList);
         });
 
-        if (programList.children.length > 0) {
-            const topPanel = document.getElementById('topPanel');
-            if (topPanel && topPanel.classList.contains('hidden')) {
-                // Použít exportovanou funkci toggleTopPanel, pokud je k dispozici
-                const toggleTopPanel = window.toggleTopPanel;
-                if (typeof toggleTopPanel === 'function') {
-                    toggleTopPanel();
-                } else {
-                    topPanel.classList.remove('hidden');
-                }
+        // Otevřít pravý panel s programy
+        const rightPanel = document.getElementById('rightPanel');
+        if (rightPanel && !rightPanel.classList.contains('open')) {
+            const toggleRightPanel = window.toggleRightPanel;
+            if (typeof toggleRightPanel === 'function') {
+                toggleRightPanel();
+            } else {
+                rightPanel.classList.add('open');
             }
         }
 

@@ -39,33 +39,6 @@
                 <!-- Volný prostor uprostřed -->
                 <div style="flex: 1;"></div>
 
-                <!-- Tlačítko pro ukládání -->
-                <button id="saveButton" class="square-button" title="Uložit aktuální program">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
-                        <path d="M17 21v-8H7v8"></path>
-                        <path d="M7 3v5h8"></path>
-                    </svg>
-                </button>
-
-                <!-- Tlačítko pro načítání JSON -->
-                <button id="loadJsonButton" class="square-button" title="Načíst programy z JSON">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                </button>
-
-                <!-- Tlačítko pro ukládání JSON -->
-                <button id="saveJsonButton" class="square-button" title="Uložit programy do JSON">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                </button>
-
                 <!-- Tlačítko pro parametry -->
                 <button id="parametersButton" class="square-button" title="Zobrazit parametry">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -79,13 +52,6 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                         <rect x="8" y="8" width="8" height="8" rx="1"></rect>
-                    </svg>
-                </button>
-
-                <!-- Tlačítko pro přepínání panelu s programy -->
-                <button id="simulatorButton" class="square-button" title="Zobrazit seznam programů">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
 
@@ -174,15 +140,9 @@
     <div id="rightPanel" class="side-panel right-panel">
         <button class="close-button">×</button>
         <div class="panel-content">
-            <h3 class="panel-title">Nastavení</h3>
-            <div class="panel-section">
-                <h4>Simulace</h4>
-                <p>Nastavení simulace CNC programu se teprve připravuje.</p>
-            </div>
-
-            <div class="panel-section">
-                <h4>Editor</h4>
-                <p>Nastavení editoru se teprve připravuje.</p>
+            <h3 class="panel-title">Načtené programy</h3>
+            <div id="rightPanelProgramList" class="panel-section program-container">
+                <!-- Zde se budou zobrazovat načtené programy -->
             </div>
         </div>
     </div>

@@ -16,14 +16,22 @@ body {
     flex-direction: column;
     height: 100vh;
     background-color: #f3f4f6;
+    /* Optimalizace vykreslování */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 .editor {
     background-color: white;
     overflow: hidden;
     position: relative;
+    /* Hardwarová akcelerace */
+    transform: translate3d(0,0,0);
+    will-change: height; /* Naznačit prohlížeči, co se bude měnit */
 }
 
+/* Vylepšený styl pro Menu tlačítko */
 .editor-label {
     position: absolute;
     top: 0;
@@ -40,6 +48,13 @@ body {
     flex-direction: column;
     align-items: center;
     min-width: 60px;
+    transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    pointer-events: auto;  /* Explicitně povolit události */
+}
+
+.editor-label:active {
+    background-color: #d1d5db;
+    transform: scale(0.95);
 }
 
 .editor-label::after {
@@ -50,10 +65,12 @@ body {
     background-color: #6b7280;
     border-radius: 9999px;
     box-shadow: 0 6px 0 #6b7280;
+    transition: transform 0.3s;
 }
 
 .editor-label:hover {
     background-color: #d1d5db;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .editor textarea {
@@ -79,6 +96,10 @@ body {
     /* Minimální výška pro mobilní zařízení */
 }
 
+#bottomEditor textarea {
+    min-height: 1rem; /* Minimální výška pro textarea */
+}
+
 @media (max-width: 768px) {
     #bottomEditor {
         min-height: 20vh;
@@ -93,6 +114,9 @@ body {
     transition: height 0.3s ease-in-out;
     border-top: 1px solid #d1d5db;
     border-bottom: 1px solid #d1d5db;
+    /* Hardwarová akcelerace */
+    transform: translate3d(0,0,0);
+    will-change: height; /* Naznačit prohlížeči, co se bude měnit */
 }
 
 .middle-content {
@@ -824,4 +848,272 @@ body {
         overflow-x: auto;
         white-space: nowrap;
     }
+}
+
+/* Styly pro zobrazení programů v pravém panelu */
+.program-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* Změna výšky na celou dostupnou výšku */
+    max-height: calc(100vh - 100px); /* Místo původních 70vh */
+    height: calc(100vh - 100px); /* Přidáno pro vyplnění celé výšky */
+    overflow-y: auto;
+    padding-right: 5px;
+    /* Přidání dolního paddingu pro lepší čitelnost na konci */
+    padding-bottom: 20px;
+}
+
+.right-panel-program {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.right-panel-program:hover {
+    background-color: #e5e7eb;
+}
+
+.right-panel-program.active {
+    background-color: #60a5fa;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.right-panel-program .program-name {
+    font-weight: bold;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.right-panel-program .program-meta {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.right-panel-program.active .program-meta {
+    color: #e5e7eb;
+}
+
+/* Vylepšení pro mobilní zařízení */
+@media (max-width: 768px) {
+    .editor-label {
+        padding: 8px 12px 12px;
+        font-size: 14px;
+        min-width: 70px;
+        right: 15px;
+        top: 10px;
+        font-weight: bold;
+    }
+
+    .editor-label::after {
+        width: 30px;
+        height: 4px;
+        margin-top: 10px;
+    }
+
+    /* Vylepšení viditelnosti aktivního stavu menu tlačítka */
+    .middle-window[style*="height: 10vh"] ~ #bottomEditor .editor-label {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .middle-window[style*="height: 10vh"] ~ #bottomEditor .editor-label::after {
+        background-color: white;
+        box-shadow: 0 6px 0 white;
+    }
+
+    /* Vylepšení pro lepší dotyková tlačítka */
+    .square-button {
+        width: 55px;
+        height: 55px;
+    }
+
+    .middle-window {
+        min-height: 65px;
+    }
+
+    .middle-content {
+        min-height: 65px;
+        padding: 5px;
+    }
+}
+
+/* Speciální styl pro mobilní zařízení */
+.mobile-menu-button {
+    background-color: #4b5563;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-menu-button::after {
+    background-color: white;
+    box-shadow: 0 6px 0 white;
+}
+
+.mobile-menu-button:hover,
+.mobile-menu-button:active {
+    background-color: #374151;
+}
+
+/* Styl pro režim posunování */
+.editor-label.resizing,
+body.resizing {
+    cursor: row-resize !important;
+}
+
+.editor-label.resizing::after {
+    background-color: #3b82f6;
+    box-shadow: 0 6px 0 #3b82f6;
+}
+
+/* Vylepšení čitelnosti ukazatele tažení */
+.editor-label::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background-color: #6b7280;
+    border-radius: 999px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.editor-label:hover::before {
+    opacity: 1;
+}
+
+/* Zpětná vazba při změně rozměrů */
+.container.resizing .editor {
+    transition: none !important; /* Vypnout animace během tažení pro plynulost */
+}
+
+.container:not(.resizing) .editor {
+    transition: height 0.3s ease;
+}
+
+/* Vylepšení pro indikaci tažení */
+.editor-label::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px; /* Širší oblast pro lepší uchopení */
+    height: 4px;
+    background-color: #6b7280;
+    border-radius: 999px;
+    opacity: 0.6;
+}
+
+.editor-label:hover::before {
+    opacity: 1;
+    height: 5px; /* Zvýraznit při najetí */
+    background-color: #3b82f6; /* Modrá barva při najetí */
+}
+
+/* Optimalizace grafiky pro lepší výkon na mobilních zařízeních */
+.container {
+    /* Optimalizace vykreslování */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.editor, .middle-window {
+    /* Hardwarová akcelerace */
+    transform: translate3d(0,0,0);
+    will-change: height; /* Naznačit prohlížeči, co se bude měnit */
+}
+
+.bottom-drag-zone {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    z-index: 1000;
+    cursor: row-resize;
+}
+
+/* Animace během tažení - plynulejší pohyb */
+@media (max-width: 768px) {
+    .editor, .middle-window {
+        transition: none; /* Vypnout animace na mobilech pro rychlejší odezvu */
+    }
+
+    .editor-label {
+        padding: 8px 12px 16px; /* Větší padding dole pro lepší uchopení */
+    }
+
+    .editor-label::before {
+        height: 6px; /* Výraznější úchyt na mobilech */
+        width: 40px;
+        bottom: 6px;
+    }
+}
+
+/* Zpětná vazba při změně rozměrů */
+.container.resizing .editor {
+    transition: height 0.05s linear;
+}
+
+.container:not(.resizing) .editor {
+    transition: height 0.3s ease;
+}
+
+/* Vylepšení táhla pro tažení pro lepší UX bez ohledu na stav menu */
+.bottom-drag-zone {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 15px; /* Zvětšeno pro lepší možnost uchopení */
+    z-index: 1002; /* Vyšší než ostatní elementy, aby bylo vždy dostupné */
+    cursor: row-resize;
+}
+
+/* Indikátor pro lepší UX - aby uživatel viděl, kde může táhnout */
+.bottom-drag-zone:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background-color: rgba(107, 114, 128, 0.3);  /* Šedá s průhledností */
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.bottom-drag-zone:hover:before {
+    background-color: rgba(59, 130, 246, 0.5);  /* Modrá při najetí myší */
+}
+
+/* Upravíme výšku spodního editoru, aby byl vždy viditelný, i když je menu zavřené */
+#bottomEditor {
+    min-height: 5vh; /* Minimální výška i při zavřeném menu */
+}
+
+/* Pro stav, kdy je menu zavřené, ale chceme vidět textovou plochu */
+#bottomEditor textarea {
+    min-height: 1rem; /* Minimální výška pro textarea */
+}
+
+/* Vizuální styl pro textfield ve spodním editoru, když je menu zavřené */
+.editor.minimized textarea {
+    background-color: #f9fafb; /* Světlejší pozadí pro minimalizovaný stav */
+    border-top: 2px solid #e5e7eb; /* Zvýrazněná hranice pro oddělení */
+}
+
+/* Speciální kurzor pro dolní část obrazovky, aby bylo jasné, že lze táhnout */
+body.can-resize-editors {
+    cursor: row-resize !important;
 }

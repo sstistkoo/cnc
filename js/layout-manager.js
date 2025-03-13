@@ -13,6 +13,30 @@ let originalTopHeight, originalBottomHeight;
 let container, topEditor, middleWindow, bottomEditor, middleContent, editorHandle, leftPanel, rightPanel, topPanel;
 
 /**
+ * Aktualizace globálního stavu menu
+ * @param {boolean} open - Má být menu otevřené?
+ */
+function updateGlobalMenuState(open) {
+    isMiddleOpen = open;
+    const middleHeight = isMiddleOpen ? MIDDLE_HEIGHT : 1;
+
+    // Nastavit výšky podle toho, zda je menu otevřené nebo zavřené
+    if (open) {
+        // Otevřené menu - rovnoměrnější rozdělení oken
+        const availableSpace = 100 - MIDDLE_HEIGHT;
+        topHeight = availableSpace * 0.7; // 70% dostupného prostoru
+        bottomHeight = availableSpace * 0.3; // 30% dostupného prostoru
+    } else {
+        // Zavřené menu - maximalizovaný simulátor
+        topHeight = 99;
+        bottomHeight = 1;
+    }
+
+    // Aktualizovat všechny prvky UI pro konzistenci
+    updateHeights();
+}
+
+/**
  * Inicializace referencí na DOM elementy
  */
 function initializeLayoutReferences() {
@@ -98,18 +122,11 @@ function handleClick(e) {
     e.preventDefault();
     e.stopPropagation();
 
+    // Přepnout stav menu
     isMiddleOpen = !isMiddleOpen;
 
-    if (isMiddleOpen) {
-        const availableSpace = 100 - MIDDLE_HEIGHT;
-        topHeight = availableSpace * 0.7;
-        bottomHeight = availableSpace * 0.3;
-    } else {
-        topHeight = 99;
-        bottomHeight = 1;
-    }
-
-    updateHeights();
+    // Použít funkci updateGlobalMenuState pro přepnutí stavu
+    updateGlobalMenuState(isMiddleOpen);
 
     // Aktualizovat číslování řádků po dokončení animace
     setTimeout(function() {
@@ -131,6 +148,17 @@ function handleMouseDown(e) {
     startBottomHeight = bottomHeight;
 
     document.body.style.cursor = 'row-resize';
+    document.body.classList.add('resizing');
+
+    // Přidat třídu pro animace
+    if (container) {
+        container.classList.add('resizing');
+    }
+
+    // Přidat třídu na editorHandle pro vizuální feedback
+    if (editorHandle) {
+        editorHandle.classList.add('resizing');
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -142,17 +170,44 @@ function handleMouseDown(e) {
 function handleMouseMove(e) {
     if (!isDragging) return;
 
+    // Omezit četnost aktualizací pro plynulejší pohyb
+    if (!window.requestAnimationFrame) {
+        updateDragPosition(e);
+    } else {
+        // Použít requestAnimationFrame pro plynulejší vykreslování
+        if (!window.dragAnimationScheduled) {
+            window.dragAnimationScheduled = true;
+            window.requestAnimationFrame(() => {
+                updateDragPosition(e);
+                window.dragAnimationScheduled = false;
+            });
+        }
+    }
+}
+
+/**
+ * Aktualizace pozice při tažení - odděleno pro lepší výkon
+ */
+function updateDragPosition(e) {
+    // Nastavení, které umožní tažení i při zavřeném menu
+    // POZNÁMKA: Nebudeme otevírat menu, ale pouze měnit velikosti panelů
     const deltaY = e.clientY - startY;
     const deltaPercent = (deltaY / window.innerHeight) * 100;
 
-    const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
-    const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+    // Vypočítat novou velikost s ohledem na aktuální stav menu
+    const availableSpace = isMiddleOpen ? (100 - MIDDLE_HEIGHT) : 99; // 99% pro zavřené menu (1% zůstává)
+    const minBottomHeight = isMiddleOpen ? 20 : 5; // Minimální výška pro spodní panel
+
+    const newTopHeight = Math.max(20, Math.min(availableSpace - minBottomHeight, startTopHeight + deltaPercent));
     const newBottomHeight = availableSpace - newTopHeight;
 
-    if (newBottomHeight >= 20) {
+    if (newBottomHeight >= minBottomHeight) {
         topHeight = newTopHeight;
         bottomHeight = newBottomHeight;
-        updateHeights();
+
+        // Přímý update stylů pro odstranění zpoždění
+        if (topEditor) topEditor.style.height = `${topHeight}vh`;
+        if (bottomEditor) bottomEditor.style.height = `${bottomHeight}vh`;
     }
 }
 
@@ -164,6 +219,17 @@ function handleMouseUp() {
 
     isDragging = false;
     document.body.style.cursor = '';
+    document.body.classList.remove('resizing');
+
+    // Odstranit třídu pro animace
+    if (container) {
+        container.classList.remove('resizing');
+    }
+
+    // Odstranit třídu z editorHandle
+    if (editorHandle) {
+        editorHandle.classList.remove('resizing');
+    }
 
     setTimeout(function() {
         if (window.setupImprovedLineNumbers) {
@@ -190,21 +256,46 @@ function handleTouchStart(e) {
 function handleTouchMove(e) {
     if (!isDragging) return;
 
+    // Optimalizace stejná jako u myši
+    if (!window.requestAnimationFrame) {
+        updateTouchDragPosition(e);
+    } else {
+        if (!window.dragAnimationScheduled) {
+            window.dragAnimationScheduled = true;
+            window.requestAnimationFrame(() => {
+                updateTouchDragPosition(e);
+                window.dragAnimationScheduled = false;
+            });
+        }
+    }
+
+    e.preventDefault();
+}
+
+/**
+ * Aktualizace pozice při dotykovém tažení
+ */
+function updateTouchDragPosition(e) {
+    // Podobný přístup jako u myši - neotevírat menu, ale měnit velikost přímo
     const touch = e.touches[0];
     const deltaY = touch.clientY - startY;
     const deltaPercent = (deltaY / window.innerHeight) * 100;
 
-    const availableSpace = 100 - (isMiddleOpen ? MIDDLE_HEIGHT : 1);
-    const newTopHeight = Math.max(20, Math.min(availableSpace - 20, startTopHeight + deltaPercent));
+    // Vypočítat novou velikost s ohledem na aktuální stav menu
+    const availableSpace = isMiddleOpen ? (100 - MIDDLE_HEIGHT) : 99; // 99% pro zavřené menu (1% zůstává)
+    const minBottomHeight = isMiddleOpen ? 20 : 5; // Minimální výška pro spodní panel
+
+    const newTopHeight = Math.max(20, Math.min(availableSpace - minBottomHeight, startTopHeight + deltaPercent));
     const newBottomHeight = availableSpace - newTopHeight;
 
-    if (newBottomHeight >= 20) {
+    if (newBottomHeight >= minBottomHeight) {
         topHeight = newTopHeight;
         bottomHeight = newBottomHeight;
-        updateHeights();
-    }
 
-    e.preventDefault();
+        // Přímý update stylů pro odstranění zpoždění
+        if (topEditor) topEditor.style.height = `${topHeight}vh`;
+        if (bottomEditor) bottomEditor.style.height = `${bottomHeight}vh`;
+    }
 }
 
 /**
@@ -306,10 +397,24 @@ function setupPanelEventHandlers() {
     const toggleTopPanelBtn = document.getElementById('toggleTopPanelBtn');
     const simulatorButton = document.getElementById('simulatorButton');
 
+    // Přidání event listenerů pro tlačítka zavření v panelech
+    const leftPanelCloseBtn = document.querySelector('.left-panel .close-button');
+    const rightPanelCloseBtn = document.querySelector('.right-panel .close-button');
+
     if (lpButton) lpButton.addEventListener('click', toggleLeftPanel);
     if (ppButton) ppButton.addEventListener('click', toggleRightPanel);
     if (toggleTopPanelBtn) toggleTopPanelBtn.addEventListener('click', toggleTopPanel);
     if (simulatorButton) simulatorButton.addEventListener('click', toggleTopPanel);
+
+    // Přidání handleru pro křížek v levém panelu
+    if (leftPanelCloseBtn) {
+        leftPanelCloseBtn.addEventListener('click', toggleLeftPanel);
+    }
+
+    // Přidání handleru pro křížek v pravém panelu
+    if (rightPanelCloseBtn) {
+        rightPanelCloseBtn.addEventListener('click', toggleRightPanel);
+    }
 
     // Zavřít panel při kliknutí mimo
     document.addEventListener('click', function(e) {
@@ -331,7 +436,11 @@ function setupPanelEventHandlers() {
  */
 function initializeLayout() {
     initializeLayoutReferences();
-    updateHeights();
+
+    // Nastavení výchozích hodnot při načtení stránky - jasně definovaný stav
+    isMiddleOpen = false;
+    updateGlobalMenuState(false);
+
     setupResizeObserver();
     setupEditorHandleEvents();
     setupPanelEventHandlers();
@@ -360,5 +469,7 @@ export {
     updateHeights,
     toggleLeftPanel,
     toggleRightPanel,
-    toggleTopPanel
+    toggleTopPanel,
+    updateGlobalMenuState,
+    handleMouseDown  // Exportovat handleMouseDown pro použití v editor-manager.js
 };
