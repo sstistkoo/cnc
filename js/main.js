@@ -41,6 +41,25 @@ function initializeApp() {
         // Exponovat funkci z layout-manageru pro manipulaci s drag&drop chováním
         window.handleEditorMouseDown = handleMouseDown;
 
+        // Přidat tlačítko pro přepnutí simulátoru do střední lišty
+        addSimulatorToggleButton();
+
+        // Přidat event listener pro tlačítko Parse
+        const parseButton = document.getElementById('parseButton');
+        if (parseButton) {
+            parseButton.addEventListener('click', function() {
+                parseCurrentProgram();
+            });
+        }
+
+        // Přidat event listener pro tlačítko parsovaných řádků
+        const parseModalButton = document.getElementById('parseModalButton');
+        if (parseModalButton) {
+            parseModalButton.addEventListener('click', function() {
+                openParsedLinesModal();
+            });
+        }
+
         // Přidáno pro ladění tlačítka Menu
         console.info("Důležité: Pro správnou funkci tlačítka Menu může být potřeba vyčistit cache prohlížeče (Ctrl+F5)");
 
@@ -62,6 +81,23 @@ function initializeApp() {
 
             console.log('Stav menu resetován do výchozího stavu.');
         }, 500);
+
+        // Propojit tlačítko pro výběr souborů s file input
+        const fileSelectButton = document.getElementById('fileSelectButton');
+        const fileInput = document.getElementById('fileInput');
+        if (fileSelectButton && fileInput) {
+            fileSelectButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        // Import modálních funkcí již není potřeba, máme vlastní implementaci
+        // Ponecháme pouze pro zpětnou kompatibilitu
+        import('./modal-manager.js').then(module => {
+            window.showParametersModal = module.showParametersModal;
+        }).catch(err => {
+            console.error('Chyba při importu modálních funkcí:', err);
+        });
 
         console.log('Aplikace úspěšně inicializována');
     } catch (error) {
@@ -146,6 +182,258 @@ function addBottomDragZone() {
             window.handleEditorMouseDown(dragEvent);
         }
     }
+}
+
+/**
+ * Přidá tlačítko pro přepnutí simulátoru do střední lišty
+ */
+function addSimulatorToggleButton() {
+    const middleContent = document.querySelector('.middle-content');
+    if (!middleContent) return;
+
+    // Vytvořit tlačítko pro simulátor a umístit ho do střední části před tlačítko PP
+    const simulatorButton = document.createElement('button');
+    simulatorButton.id = 'simulatorButton';
+    simulatorButton.className = 'square-button';
+    simulatorButton.title = 'Displej';  // Změna názvu tlačítka
+    simulatorButton.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M2 12h20"></path>
+        </svg>
+    `;
+
+    // Najít tlačítko PP
+    const ppButton = document.getElementById('ppButton');
+
+    if (ppButton && ppButton.parentNode) {
+        // Vložit tlačítko před tlačítko PP
+        ppButton.parentNode.insertBefore(simulatorButton, ppButton);
+
+        // Přidat event listener, který volá funkci toggleTopPanel z layout-manageru
+        simulatorButton.addEventListener('click', function() {
+            if (typeof window.toggleTopPanel === 'function') {
+                window.toggleTopPanel();
+            }
+        });
+    }
+}
+
+/**
+ * Spustí parsování aktuálního programu
+ */
+function parseCurrentProgram() {
+    const editorTextarea = document.querySelector('#bottomEditor textarea');
+    if (!editorTextarea || !editorTextarea.value.trim()) {
+        console.warn('Žádný program k parsování');
+        alert('Nejprve načtěte CNC program.');
+        return;
+    }
+
+    console.clear();
+    console.log('Parsování programu...');
+
+    // Importujeme parser modul a zpracujeme kód
+    import('./cnc-line-parser.js').then(module => {
+        const code = editorTextarea.value;
+        const parsedProgram = module.parseProgram(code);
+
+        console.log(`Úspěšně parsováno ${parsedProgram.length} řádků.`);
+
+        // Statistiky o typech řádků
+        const typeCounts = {};
+        parsedProgram.forEach(line => {
+            if (!typeCounts[line.type]) typeCounts[line.type] = 0;
+            typeCounts[line.type]++;
+        });
+
+        console.group('Statistika typů řádků');
+        Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).forEach(([type, count]) => {
+            console.log(`${type}: ${count}`);
+        });
+        console.groupEnd();
+
+        // DŮLEŽITÁ ZMĚNA: Uložit data přímo do globálního objektu, který je specificky vytvořen pro tuto funkci
+        window.cncParserData = {
+            program: parsedProgram,
+            code: code,
+            timestamp: Date.now()
+        };
+
+        // Pouze zobrazíme hlášku, že program byl parsován
+        console.info('Program byl úspěšně parsován. Klikněte na "Parsované řádky" pro zobrazení detailů.');
+
+        // Volitelně můžeme přidat animační efekt na tlačítko parsované řádky pro zvýraznění
+        const parseModalButton = document.getElementById('parseModalButton');
+        if (parseModalButton) {
+            parseModalButton.classList.add('active');
+            setTimeout(() => {
+                parseModalButton.classList.remove('active');
+            }, 1000);
+        }
+
+        // NOVÉ: Přímé nastavení event handleru pro parseModalButton, abychom zajistili, že naše data budou použita
+        if (parseModalButton) {
+            // Odstranit všechny existující handlery
+            const newParseButton = parseModalButton.cloneNode(true);
+            if (parseModalButton.parentNode) {
+                parseModalButton.parentNode.replaceChild(newParseButton, parseModalButton);
+            }
+
+            // Přidat nový handler, který zavolá náš vlastní kód pro zobrazení parsovaných řádků
+            newParseButton.addEventListener('click', function() {
+                openParsedLinesModal();
+            });
+        }
+    }).catch(error => {
+        console.error('Chyba při parsování programu:', error);
+        alert('Chyba při parsování programu: ' + error.message);
+    });
+}
+
+/**
+ * Otevře modální okno s parsovanými řádky na základě naparsovaných dat
+ */
+function openParsedLinesModal() {
+    // Odstranit existující modální okno, pokud existuje
+    const existingModal = document.getElementById('parsedLinesModal');
+    if (existingModal) existingModal.remove();
+
+    // Vytvořit nové modální okno
+    const modal = document.createElement('div');
+    modal.id = 'parsedLinesModal';
+    modal.className = 'modal-window';
+    modal.innerHTML = `
+        <div class="modal-content wide">
+            <div class="modal-header">
+                <h3>Parsované řádky CNC programu</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="parsedLinesContent">
+                    <p>Načítání parsovaných řádků...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Přidat event listener pro zavření modálního okna
+    modal.querySelector('.modal-close').addEventListener('click', function() {
+        modal.remove();
+    });
+
+    // Přidat zavírání kliknutím mimo modální okno
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+
+    // Zobrazit modální okno s animací
+    setTimeout(() => modal.classList.add('open'), 10);
+
+    // Načíst parsovaná data
+    const content = document.getElementById('parsedLinesContent');
+    if (!content) return;
+
+    // Zkontrolovat jestli máme parsovaná data
+    if (window.cncParserData && window.cncParserData.program) {
+        console.log('Používám parsovaná data z cache');
+        displayParsedLines(window.cncParserData.program, content);
+    } else {
+        // Pokusit se znovu naparsovat aktuální kód v editoru
+        const editorTextarea = document.querySelector('#bottomEditor textarea');
+        if (!editorTextarea || !editorTextarea.value.trim()) {
+            content.innerHTML = '<p>Nejprve načtěte a parsujte CNC program.</p>';
+            return;
+        }
+
+        // Parsovat aktuální kód
+        content.innerHTML = '<p>Parsing nových dat...</p>';
+        import('./cnc-line-parser.js').then(module => {
+            const code = editorTextarea.value;
+            try {
+                const parsedProgram = module.parseProgram(code);
+                window.cncParserData = {
+                    program: parsedProgram,
+                    code: code,
+                    timestamp: Date.now()
+                };
+                displayParsedLines(parsedProgram, content);
+            } catch (error) {
+                content.innerHTML = `<p class="error">Chyba při parsování: ${error.message}</p>`;
+                console.error('Chyba při parsování řádků:', error);
+            }
+        }).catch(error => {
+            content.innerHTML = `<p class="error">Chyba při načítání parseru: ${error.message}</p>`;
+        });
+    }
+}
+
+/**
+ * Zobrazí parsované řádky v elementu content
+ * @param {Array} parsedProgram - Parsovaný program
+ * @param {HTMLElement} content - Element, do kterého se mají zobrazit řádky
+ */
+function displayParsedLines(parsedProgram, content) {
+    // Vytvoření tabulky parsovaných řádků
+    let html = '<table class="parsed-lines-table">';
+    html += '<tr><th>Řádek</th><th>Kód</th><th>Typ</th><th>G-kódy</th><th>M-kódy</th><th>Souřadnice</th><th>Komentář</th></tr>';
+
+    parsedProgram.forEach(line => {
+        const lineNumber = line.lineNumber;
+        const originalLine = line.originalLine || '';
+        const type = line.type || 'neuvedeno';
+
+        // G-kódy
+        let gCodes = '';
+        if (line.gCodes && line.gCodes.length > 0) {
+            gCodes = line.gCodes.map(code => `G${code}`).join(', ');
+        }
+
+        // M-kódy
+        let mCodes = '';
+        if (line.mCodes && line.mCodes.length > 0) {
+            mCodes = line.mCodes.map(code => `M${code}`).join(', ');
+        }
+
+        // Souřadnice
+        let coords = '';
+        if (line.coordinates) {
+            const coordStr = Object.entries(line.coordinates)
+                .map(([key, value]) => `${key}${value >= 0 ? '+' : ''}${value.toFixed(3)}`)
+                .join(' ');
+            coords = coordStr;
+        }
+
+        // Komentář
+        const comment = line.comment || '';
+
+        // Přidání řádku do tabulky s barevným zvýrazněním podle typu
+        html += `<tr class="line-type-${type.replace(/\s+/g, '_').toLowerCase()}">`;
+        html += `<td>${lineNumber}</td>`;
+        html += `<td><code>${escapeHtml(originalLine)}</code></td>`;
+        html += `<td>${type}</td>`;
+        html += `<td>${gCodes}</td>`;
+        html += `<td>${mCodes}</td>`;
+        html += `<td>${coords}</td>`;
+        html += `<td>${comment}</td>`;
+        html += `</tr>`;
+    });
+
+    html += '</table>';
+    content.innerHTML = html;
+}
+
+/**
+ * Pomocná funkce pro escapování HTML
+ * @param {string} text - Text k escapování
+ * @returns {string} - Escapovaný text
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Inicializovat aplikaci po načtení DOM

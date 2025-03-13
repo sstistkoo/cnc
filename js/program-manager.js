@@ -215,15 +215,8 @@ function handleFileSelection(files) {
                 toggleLeftPanel();
             }
 
-            // Otevřít pravý panel, aby uživatel viděl načtené programy
-            const toggleRightPanel = window.toggleRightPanel;
-            if (typeof toggleRightPanel === 'function') {
-                // Pokud není otevřen, otevřeme ho
-                const rightPanel = document.getElementById('rightPanel');
-                if (rightPanel && !rightPanel.classList.contains('open')) {
-                    toggleRightPanel();
-                }
-            }
+            // ZMĚNA: Pravý panel necháme zavřený, ale zobrazíme informaci
+            console.info("Program byl načten a je dostupný v pravém panelu. Klikněte na PP pro zobrazení.");
         };
         reader.readAsText(file);
     });
@@ -262,16 +255,8 @@ function loadCNCProgramFromJSON() {
                 addProgramToList(program, programList);
             });
 
-            // Otevřít pravý panel s programy
-            const rightPanel = document.getElementById('rightPanel');
-            if (rightPanel && !rightPanel.classList.contains('open')) {
-                const toggleRightPanel = window.toggleRightPanel;
-                if (typeof toggleRightPanel === 'function') {
-                    toggleRightPanel();
-                } else {
-                    rightPanel.classList.add('open');
-                }
-            }
+            // ZMĚNA: Necháme panel zavřený, ale zobrazíme informaci
+            console.info("Programy byly načteny a jsou dostupné v pravém panelu. Klikněte na PP pro zobrazení.");
         })
         .catch(error => {
             console.error('Chyba při načítání CNC programu:', error);

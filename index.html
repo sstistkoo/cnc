@@ -33,8 +33,16 @@
                 <!-- Tlačítko LP zůstane první vlevo -->
                 <button id="lpButton" class="square-button">LP</button>
 
-                <!-- Vstup pro výběr souborů -->
+                <!-- Vstup pro výběr souborů (skrytý) -->
                 <input type="file" id="fileInput" class="file-input" accept=".mpf,.spf,.nc,.cnc" multiple />
+
+                <!-- Přidáno tlačítko Parse pro parsování programu -->
+                <button id="parseButton" class="square-button" title="Parsovat program">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                </button>
 
                 <!-- Volný prostor uprostřed -->
                 <div style="flex: 1;"></div>

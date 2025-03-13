@@ -442,6 +442,15 @@ body {
     background-color: #3367d6;
 }
 
+/* Styl pro tlačítko Parse */
+#parseButton {
+    background-color: #7e57c2;
+}
+
+#parseButton:hover {
+    background-color: #5e35b1;
+}
+
 /* Styl pro tlačítko konzole */
 .console-button {
     height: 35px;
@@ -1116,4 +1125,29 @@ body.resizing {
 /* Speciální kurzor pro dolní část obrazovky, aby bylo jasné, že lze táhnout */
 body.can-resize-editors {
     cursor: row-resize !important;
+}
+
+/* Styl pro tlačítko simulátoru */
+#simulatorButton {
+    position: relative;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+#simulatorButton svg {
+    transition: transform 0.3s;
+}
+
+#simulatorButton.active {
+    background-color: #3b82f6;
+}
+
+#simulatorButton.active svg {
+    transform: rotate(45deg);
+    stroke: white;
+}
+
+/* Animace pro horní panel - plynulejší */
+.top-panel {
+    transition: transform 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+    z-index: 1100;
 }

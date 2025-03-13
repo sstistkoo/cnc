@@ -347,7 +347,7 @@ function toggleTopPanel() {
         if (toggleBtn) toggleBtn.textContent = '↓';
         if (simulatorButton) {
             simulatorButton.classList.remove('active');
-            simulatorButton.title = "Zobrazit seznam programů";
+            simulatorButton.title = "Displej";  // Změna textu
         }
     } else {
         // Panel byl právě zobrazen
@@ -380,7 +380,7 @@ function toggleTopPanel() {
         if (toggleBtn) toggleBtn.textContent = '×';
         if (simulatorButton) {
             simulatorButton.classList.add('active');
-            simulatorButton.title = "Skrýt seznam programů";
+            simulatorButton.title = "Skrýt displej";  // Změna textu
         }
     }
 

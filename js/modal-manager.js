@@ -331,69 +331,106 @@ function analyzeProgramParameters(code) {
 
 /**
  * Zobrazení parsovaných řádků programu
- * @param {string} code - Kód programu
+ * @param {string} code - Kód programu (volitelný, pokud není zadán, použije se z editoru)
  */
 function showParsedLines(code) {
     const content = document.getElementById('parsedLinesContent');
     if (!content) return;
 
-    content.innerHTML = '<p>Probíhá parsování řádků...</p>';
+    content.innerHTML = '<p>Probíhá načítání parsovaných řádků...</p>';
 
+    // DŮLEŽITÁ ZMĚNA: Kontrolujeme nově pojmenovanou proměnnou
+    if (window.lastParsedCNCProgram) {
+        console.log('Používám již parsovaná data pro zobrazení.');
+        displayParsedLines(window.lastParsedCNCProgram, content);
+        return;
+    }
+
+    // Pokud nemáme žádný kód ani uložená parsovaná data, použijeme kód z editoru
+    if (!code) {
+        const editorTextarea = document.querySelector('#bottomEditor textarea');
+        if (editorTextarea && editorTextarea.value.trim()) {
+            code = editorTextarea.value;
+        } else {
+            content.innerHTML = '<p>Nejprve parsujte CNC program tlačítkem "Parse".</p>';
+            return;
+        }
+    }
+
+    // Provádíme nové parsování
+    console.log('Parsování nových dat...');
     import('./cnc-line-parser.js').then(module => {
-        const parsedProgram = module.parseProgram(code);
+        try {
+            const parsedProgram = module.parseProgram(code);
 
-        // Vytvoření tabulky parsovaných řádků
-        let html = '<table class="parsed-lines-table">';
-        html += '<tr><th>Řádek</th><th>Kód</th><th>Typ</th><th>G-kódy</th><th>M-kódy</th><th>Souřadnice</th><th>Komentář</th></tr>';
+            // DŮLEŽITÁ ZMĚNA: Ukládáme parsovaná data pod novým názvem
+            window.lastParsedCNCProgram = parsedProgram;
+            window.lastParsedCNCCode = code;
 
-        parsedProgram.forEach(line => {
-            const lineNumber = line.lineNumber;
-            const originalLine = line.originalLine || '';
-            const type = line.type || 'neuvedeno';
-
-            // G-kódy
-            let gCodes = '';
-            if (line.gCodes && line.gCodes.length > 0) {
-                gCodes = line.gCodes.map(code => `G${code}`).join(', ');
-            }
-
-            // M-kódy
-            let mCodes = '';
-            if (line.mCodes && line.mCodes.length > 0) {
-                mCodes = line.mCodes.map(code => `M${code}`).join(', ');
-            }
-
-            // Souřadnice
-            let coords = '';
-            if (line.coordinates) {
-                const coordStr = Object.entries(line.coordinates)
-                    .map(([key, value]) => `${key}${value >= 0 ? '+' : ''}${value.toFixed(3)}`)
-                    .join(' ');
-                coords = coordStr;
-            }
-
-            // Komentář
-            const comment = line.comment || '';
-
-            // Přidání řádku do tabulky s barevným zvýrazněním podle typu
-            html += `<tr class="line-type-${type.replace(/\s+/g, '_').toLowerCase()}">`;
-            html += `<td>${lineNumber}</td>`;
-            html += `<td><code>${escapeHtml(originalLine)}</code></td>`;
-            html += `<td>${type}</td>`;
-            html += `<td>${gCodes}</td>`;
-            html += `<td>${mCodes}</td>`;
-            html += `<td>${coords}</td>`;
-            html += `<td>${comment}</td>`;
-            html += `</tr>`;
-        });
-
-        html += '</table>';
-
-        content.innerHTML = html;
+            displayParsedLines(parsedProgram, content);
+        } catch (error) {
+            content.innerHTML = `<p class="error">Chyba při parsování: ${error.message}</p>`;
+            console.error('Chyba při parsování řádků:', error);
+        }
     }).catch(error => {
-        content.innerHTML = `<p class="error">Chyba při parsování programu: ${error.message}</p>`;
-        console.error('Chyba při parsování řádků:', error);
+        content.innerHTML = `<p class="error">Chyba při načítání parseru: ${error.message}</p>`;
+        console.error('Chyba při načítání modulu parser:', error);
     });
+}
+
+/**
+ * Zobrazí parsované řádky v elementu content
+ * @param {Array} parsedProgram - Parsovaný program
+ * @param {HTMLElement} content - Element, do kterého se mají zobrazit řádky
+ */
+function displayParsedLines(parsedProgram, content) {
+    // Vytvoření tabulky parsovaných řádků
+    let html = '<table class="parsed-lines-table">';
+    html += '<tr><th>Řádek</th><th>Kód</th><th>Typ</th><th>G-kódy</th><th>M-kódy</th><th>Souřadnice</th><th>Komentář</th></tr>';
+
+    parsedProgram.forEach(line => {
+        const lineNumber = line.lineNumber;
+        const originalLine = line.originalLine || '';
+        const type = line.type || 'neuvedeno';
+
+        // G-kódy
+        let gCodes = '';
+        if (line.gCodes && line.gCodes.length > 0) {
+            gCodes = line.gCodes.map(code => `G${code}`).join(', ');
+        }
+
+        // M-kódy
+        let mCodes = '';
+        if (line.mCodes && line.mCodes.length > 0) {
+            mCodes = line.mCodes.map(code => `M${code}`).join(', ');
+        }
+
+        // Souřadnice
+        let coords = '';
+        if (line.coordinates) {
+            const coordStr = Object.entries(line.coordinates)
+                .map(([key, value]) => `${key}${value >= 0 ? '+' : ''}${value.toFixed(3)}`)
+                .join(' ');
+            coords = coordStr;
+        }
+
+        // Komentář
+        const comment = line.comment || '';
+
+        // Přidání řádku do tabulky s barevným zvýrazněním podle typu
+        html += `<tr class="line-type-${type.replace(/\s+/g, '_').toLowerCase()}">`;
+        html += `<td>${lineNumber}</td>`;
+        html += `<td><code>${escapeHtml(originalLine)}</code></td>`;
+        html += `<td>${type}</td>`;
+        html += `<td>${gCodes}</td>`;
+        html += `<td>${mCodes}</td>`;
+        html += `<td>${coords}</td>`;
+        html += `<td>${comment}</td>`;
+        html += `</tr>`;
+    });
+
+    html += '</table>';
+    content.innerHTML = html;
 }
 
 /**
