@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="css/main.css">
     <!-- Zabránit ukládání do mezipaměti během vývoje -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+
+    <!-- Přidané META tagy pro lepší mobilní zkušenost -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
 </head>
 
 <body>
@@ -28,7 +33,7 @@
                 id="simulatorFrame"></iframe>
         </div>
 
-        <div class="middle-window" id="middleWindow">
+        <div id="middleWindow" class="middle-window">
             <div class="middle-content">
                 <!-- Tlačítko LP zůstane první vlevo -->
                 <button id="lpButton" class="square-button">LP</button>
@@ -85,6 +90,8 @@
                 <button id="ppButton" class="square-button">PP</button>
             </div>
         </div>
+
+        <!-- Zde se automaticky vloží nový prvek resize-handle -->
 
         <div id="bottomEditor" class="editor">
             <div class="editor-label" id="editorHandle">Menu</div>
@@ -159,7 +166,8 @@
         <button class="close-button">×</button>
         <div class="panel-content">
             <h3 class="panel-title">Načtené programy</h3>
-            <div id="rightPanelProgramList" class="panel-section program-container">
+            <!-- Přidána třída 'scrollable-container' pro lepší mobilní scrollování -->
+            <div id="rightPanelProgramList" class="panel-section program-container scrollable-container">
                 <!-- Zde se budou zobrazovat načtené programy -->
             </div>
         </div>

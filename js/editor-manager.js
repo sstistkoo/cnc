@@ -148,12 +148,22 @@ function fixMobileMenuButton() {
             middleContent.classList.remove('hidden');
             topEditor.style.height = '70vh';
             bottomEditor.style.height = '20vh';
+
+            // NOVÉ: Nastavit pozici tlačítka Menu výš pro lepší přístupnost
+            if (newEditorHandle) {
+                newEditorHandle.style.top = "-20px";
+            }
         } else {
             // Zavřít okno - explicitně nastavíme všechny hodnoty
             middleWindow.style.height = '1vh';
             middleContent.classList.add('hidden');
             topEditor.style.height = '99vh';
             bottomEditor.style.height = '1vh';
+
+            // NOVÉ: Vrátit tlačítko Menu na standardní pozici
+            if (newEditorHandle) {
+                newEditorHandle.style.top = "0px";
+            }
         }
 
         // Aktualizujeme globální stav v layout manageru (pokud existuje)
@@ -171,6 +181,18 @@ function fixMobileMenuButton() {
 
     // Pro jistotu zajistíme konzistentní počáteční stav
     setMenuState(isMiddleOpen);
+
+    // NOVÉ: Detekce mobilního zařízení pro speciální nastavení
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        // Přidat speciální třídu na tlačítko Menu pro mobilní zařízení
+        newEditorHandle.classList.add('mobile-button');
+
+        // Aktualizovat pozici tlačítka Menu podle stavu
+        if (isMiddleOpen) {
+            newEditorHandle.style.top = "-20px";
+        }
+    }
 
     console.log('Inicializace Menu tlačítka - počáteční stav:', isMiddleOpen ? 'otevřeno' : 'zavřeno');
 
@@ -221,6 +243,20 @@ function fixMobileMenuButton() {
         // Nastavit nový stav explicitně
         setMenuState(isMiddleOpen);
 
+        // NOVÉ: Posunout obsah editoru nahoru, pokud byl rozbalený a nyní je zavřený
+        if (!isMiddleOpen && isMobile) {
+            const bottomEditor = document.getElementById('bottomEditor');
+            if (bottomEditor) {
+                setTimeout(() => {
+                    // Pokud je editor srolovaný dolů, vrátit na začátek
+                    const textarea = bottomEditor.querySelector('textarea');
+                    if (textarea && textarea.scrollTop > 0) {
+                        textarea.scrollTop = 0;
+                    }
+                }, 300);
+            }
+        }
+
         // Aktualizovat číslování řádků po změně velikosti a povolit další kliknutí
         setTimeout(function() {
             // Ověřit, že změna proběhla správně
@@ -246,7 +282,6 @@ function fixMobileMenuButton() {
     }
 
     // Přidat speciální třídu pro mobilní zařízení
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
         newEditorHandle.classList.add('mobile-menu-button');
 

@@ -254,7 +254,14 @@ function parseCurrentProgram() {
         const parsedProgram = module.parseProgram(code);
 
         // Při parsování také zkontroluj parametry CNC programu
+        // Použij nový řádkový přístup k parsování parametrů
         cncParametersManager.parseParameters(code);
+
+        // NOVÉ: Zobrazit parametry seřazené podle řádků
+        import('./debug-utils.js').then(debugUtils => {
+            debugUtils.showParametersInLineOrder(cncParametersManager.paramHistory);
+            debugUtils.analyzeSameLineParameters(cncParametersManager.paramHistory);
+        }).catch(err => console.warn('Nepodařilo se načíst debug-utils:', err));
 
         // Rozšíření: Přiřadit vyhodnocené parametry k parsovaným řádkům
         if (window.cncParserData) {
@@ -271,7 +278,7 @@ function parseCurrentProgram() {
         // Statistiky o typech řádků
         const typeCounts = {};
         parsedProgram.forEach(line => {
-            if (!typeCounts[line.type]) typeCounts[line.type]++;
+            if (!typeCounts[line.type]) typeCounts[line.type] = 0;
             typeCounts[line.type]++;
         });
 

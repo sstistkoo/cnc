@@ -93,6 +93,53 @@ class ParameterDebugger {
             }))
             .sort((a, b) => b.failCount - a.failCount);
     }
+
+    /**
+     * Analyzuje definice parametrů na stejném řádku
+     * @param {Object} paramHistory - Historie parametrů
+     * @returns {Array} - Seznam parametrů definovaných na stejném řádku
+     */
+    analyzeParamsOnSameLine(paramHistory) {
+        // Vytvořit mapu řádků a parametrů na nich
+        const lineMap = new Map();
+
+        // Procházet všechny parametry a jejich historie
+        for (const [paramNum, history] of Object.entries(paramHistory)) {
+            if (!history || history.length === 0) continue;
+
+            // Vzít první definici parametru
+            const firstDef = history[0];
+            const line = firstDef.line;
+
+            // Přidat do mapy řádků
+            if (!lineMap.has(line)) {
+                lineMap.set(line, []);
+            }
+
+            lineMap.get(line).push({
+                paramNum: parseInt(paramNum, 10),
+                timestamp: firstDef.timestamp,
+                value: firstDef.value
+            });
+        }
+
+        // Filtrovat jen řádky s více parametry
+        const sameLineParams = [];
+        for (const [line, params] of lineMap.entries()) {
+            if (params.length > 1) {
+                // Seřadit parametry podle času definice
+                params.sort((a, b) => a.timestamp - b.timestamp);
+
+                sameLineParams.push({
+                    line,
+                    params,
+                    count: params.length
+                });
+            }
+        }
+
+        return sameLineParams.sort((a, b) => b.count - a.count);
+    }
 }
 
 // Globální instance pro použití v aplikaci

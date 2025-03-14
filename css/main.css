@@ -34,7 +34,7 @@ body {
 /* Vylepšený styl pro Menu tlačítko */
 .editor-label {
     position: absolute;
-    top: 0;
+    top: -40px; /* Nová pozice nad editorem */
     right: 8px;
     padding: 4px 8px 8px;
     background-color: #e5e7eb;
@@ -42,7 +42,7 @@ body {
     border-radius: 4px;
     font-size: 12px;
     color: #374151;
-    z-index: 10;
+    z-index: 1010; /* Zvýšit z-index pro lepší viditelnost */
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -94,6 +94,8 @@ body {
     visibility: visible;
     min-height: 5vh;
     /* Minimální výška pro mobilní zařízení */
+    padding-top: 20px; /* Přidat prostor pro tlačítko nahoře */
+    margin-top: 0;
 }
 
 #bottomEditor textarea {
@@ -540,6 +542,7 @@ body {
     padding: 15px;
     overflow-y: auto;
     height: calc(100% - 50px);
+    -webkit-overflow-scrolling: touch; /* Vylepšuje plynulost scrollování na iOS */
 }
 
 .panel-title {
@@ -1039,6 +1042,23 @@ body {
         min-height: 65px;
         padding: 5px;
     }
+
+    /* Speciální úprava pro mobilní zařízení */
+    .editor-label {
+        top: -20px; /* Posunout o 20px výš pro lepší dostupnost při rozbalení */
+        padding: 8px 16px 12px; /* Zvětšit plochu tlačítka */
+        font-size: 14px; /* Zvětšit text pro lepší čitelnost */
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Přidat stín pro lepší viditelnost */
+    }
+
+    /* Zajistit, že lze skrolovat v seznamu programů na mobilních zařízeních */
+    .panel-section.program-container {
+        overflow-y: scroll;
+        -webkit-overflow-scrolling: touch;
+        max-height: 70vh; /* Maximální výška, aby byl obsah skrolovatelný */
+        padding-bottom: 30px; /* Prostor dole pro lepší UX */
+    }
 }
 
 /* Speciální styl pro mobilní zařízení */
@@ -1495,4 +1515,53 @@ body.can-resize-editors {
 .missing-dependency {
     color: #dc2626;
     font-weight: bold;
+}
+
+/* Přesunutí posuvníku pod prostřední panel */
+.resize-handle {
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  cursor: ns-resize;
+  z-index: 1005;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  transition: background-color 0.2s ease;
+}
+
+.resize-handle::before {
+  content: '';
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: #d1d5db;
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.resize-handle:hover::before {
+  width: 60px;
+  background-color: #6b7280;
+}
+
+/* Speciální styl pro mobilní zařízení */
+@media (max-width: 768px) {
+  .resize-handle {
+    height: 30px; /* Větší plocha pro dotyk na mobilech */
+  }
+
+  .resize-handle::before {
+    height: 6px;
+    width: 80px;
+  }
+
+  .editor-label {
+    top: -50px; /* Ještě více posunout menu tlačítko nahoru */
+    padding: 10px;
+    font-size: 16px;
+  }
 }

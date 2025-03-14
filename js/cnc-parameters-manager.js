@@ -43,7 +43,7 @@ class CNCParametersManager {
 
         const lines = Array.isArray(code) ? code : code.split('\n');
 
-        // Zpracovat parametry v pořadí, jak se vyskytují v kódu s podporou postupných změn
+        // Procházet řádky jeden po druhém
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             const lineNumber = i + 1;
@@ -55,95 +55,344 @@ class CNCParametersManager {
 
                 if (!cleanLine) continue;
 
-                // Extrahovat všechny definice parametrů R na řádku
-                // Různé varianty syntaxe Sinumerik:
-                // R100=5.0 R101=10 R102=(R100+R101)
-                // R5=0.4041
-                // N20 R54=R54*R69
+                console.log(`Zpracovávám řádek ${lineNumber}: ${cleanLine}`);
 
-                // Uložit hodnoty parametrů použitých ve výrazech před aktuálním řádkem
-                // To zajistí, že máme referenci na hodnotu parametru před změnou
-                const usedParams = new Set();
-                const paramValuesBefore = new Map();
+                // Najít všechny definice parametrů R na řádku
+                const paramDefinitions = this.findParameterDefinitions(cleanLine);
 
-                // Najít všechny parametry R použité ve výrazech na tomto řádku
-                const rParamMatches = cleanLine.match(/R\d+/g);
-                if (rParamMatches) {
-                    rParamMatches.forEach(match => {
-                        const paramNum = parseInt(match.substring(1), 10);
-                        usedParams.add(paramNum);
-                        if (this.parameters.has(paramNum)) {
-                            paramValuesBefore.set(paramNum, this.parameters.get(paramNum));
-                        }
-                    });
-                }
+                // Zpracovat všechny nalezené definice parametrů
+                for (const def of paramDefinitions) {
+                    const paramNum = def.paramNum;
+                    const paramValue = def.value;
 
-                // Pokračovat v parsování řádku...
-                let position = 0;
-                while (position < cleanLine.length) {
-                    // Najít další definici R parametru
-                    const rIndex = cleanLine.indexOf('R', position);
-                    if (rIndex === -1) break;
+                    console.log(`Nalezen parametr R${paramNum} = ${paramValue}`);
 
-                    // Zjistit, zda jde o definici (R1=...) nebo použití v rámci výrazu
-                    // Musíme zkontrolovat, zda za R následuje číslice a později =
-                    let numEnd = rIndex + 1;
-                    while (numEnd < cleanLine.length && /\d/.test(cleanLine[numEnd])) {
-                        numEnd++;
-                    }
-
-                    // Pokud za R následuje číslo, a poté =, jde o definici parametru
-                    if (numEnd > rIndex + 1) {
-                        const eqIndex = cleanLine.indexOf('=', numEnd);
-                        if (eqIndex !== -1 && eqIndex < cleanLine.length - 1) {
-                            // Získat číslo parametru
-                            const paramNum = parseInt(cleanLine.substring(rIndex + 1, numEnd), 10);
-
-                            // Najít konec hodnoty (může být ohraničena mezerou, dalším R, nebo koncem řádku)
-                            let valueEnd = eqIndex + 1;
-                            while (valueEnd < cleanLine.length) {
-                                // Pokud narazíme na další definici R parametru, končíme
-                                if (cleanLine[valueEnd] === 'R' &&
-                                    valueEnd + 1 < cleanLine.length &&
-                                    /\d/.test(cleanLine[valueEnd + 1])) {
-
-                                    // Zkontrolujeme, zda toto R není součástí výrazu (např. R1+R2)
-                                    // Musíme se podívat na předchozí znak, jestli je to operátor
-                                    const prevChar = cleanLine[valueEnd - 1];
-                                    if (!/[\+\-\*\/\(\=]/.test(prevChar)) {
-                                        break;
-                                    }
-                                }
-                                valueEnd++;
-                            }
-
-                            // Extrahovat hodnotu parametru
-                            let paramValue = cleanLine.substring(eqIndex + 1, valueEnd).trim();
-
-                            // Vyhodnotit hodnotu parametru s vědomím předchozích hodnot
-                            this.processParameterDefinition(paramNum, paramValue, lineNumber, paramValuesBefore);
-
-                            // Posunout pozici za zpracovanou definici
-                            position = valueEnd;
-                        } else {
-                            // Nejde o definici, posunout se za R
-                            position = rIndex + 1;
-                        }
-                    } else {
-                        // Nejde o definici, posunout se za R
-                        position = rIndex + 1;
-                    }
+                    // Zpracovat hodnotu parametru (číslo, výraz, příkaz)
+                    this.processParameterValue(paramNum, paramValue, lineNumber);
                 }
             } catch (err) {
                 console.warn(`Chyba při parsování parametrů na řádku ${lineNumber}: ${err.message}`);
             }
         }
 
-        // Druhý průchod pro vyhodnocení matematických výrazů
-        this.evaluateExpressions();
-
-        console.log(`Detekováno ${this.parameters.size} parametrů CNC programu`);
+        console.log(`Celkem zpracováno ${this.parameters.size} parametrů CNC programu`);
         return this.parameters;
+    }
+
+    /**
+     * Najde všechny definice parametrů na řádku
+     * @param {string} line - řádek CNC kódu
+     * @returns {Array} - pole objektů s definicemi parametrů {paramNum, value}
+     */
+    findParameterDefinitions(line) {
+        const result = [];
+        let remainingLine = line;
+
+        // Pokračovat v hledání, dokud jsou na řádku definice parametrů
+        while (remainingLine.length > 0) {
+            // Hledat vzor typu "R123=hodnota"
+            const paramMatch = remainingLine.match(/R(\d+)\s*=\s*([^R\s;][^R\s;]*)/);
+
+            if (!paramMatch) break;
+
+            const paramNum = parseInt(paramMatch[1], 10);
+            let paramValue = paramMatch[2].trim();
+
+            // Odstranit zpracovanou část řádku
+            const matchIndex = remainingLine.indexOf(paramMatch[0]);
+            const matchLength = paramMatch[0].length;
+            remainingLine = remainingLine.substring(matchIndex + matchLength);
+
+            // Zpracovat speciální případy - výrazy v závorkách, atd.
+            if (paramValue.startsWith('(') && !paramValue.endsWith(')')) {
+                // Hledáme odpovídající uzavírací závorku
+                let openBrackets = 1;
+                let endPos = 1;
+
+                while (openBrackets > 0 && endPos < paramValue.length) {
+                    if (paramValue[endPos] === '(') openBrackets++;
+                    if (paramValue[endPos] === ')') openBrackets--;
+                    endPos++;
+                }
+
+                if (openBrackets === 0) {
+                    // Našli jsme odpovídající závorku v aktuální hodnotě
+                    paramValue = paramValue.substring(0, endPos);
+                } else {
+                    // Závorka může pokračovat do další části řádku
+                    const closingPos = remainingLine.indexOf(')');
+                    if (closingPos !== -1) {
+                        paramValue += remainingLine.substring(0, closingPos + 1);
+                        remainingLine = remainingLine.substring(closingPos + 1);
+                    }
+                }
+            }
+
+            // Přidat nalezenou definici do výsledku
+            result.push({
+                paramNum,
+                value: paramValue
+            });
+        }
+
+        return result;
+    }
+
+    /**
+     * Zpracuje hodnotu parametru a uloží ji
+     * @param {number} paramNum - číslo parametru
+     * @param {string} value - řetězec s hodnotou parametru
+     * @param {number} lineNumber - číslo řádku
+     */
+    processParameterValue(paramNum, value, lineNumber) {
+        // Odstranit bílé znaky
+        const trimmedValue = value.trim();
+
+        // Speciální zpracování pro příkazy řízení toku programu
+        if (/GOTO[FB]|IF|WHILE|REPEAT/.test(trimmedValue) || trimmedValue.startsWith('=')) {
+            this.setParameter(paramNum, `FLOW: ${trimmedValue}`, lineNumber);
+            return;
+        }
+
+        // Jednoduchý případ - číslo
+        if (/^-?\d+(\.\d+)?$/.test(trimmedValue)) {
+            const numValue = parseFloat(trimmedValue);
+            this.setParameter(paramNum, numValue, lineNumber);
+            return;
+        }
+
+        // Výraz v závorkách typu (409+0) - přímé vyhodnocení
+        if (trimmedValue.startsWith('(') && trimmedValue.endsWith(')')) {
+            try {
+                // Extrahovat výraz ze závorek
+                const expr = trimmedValue.substring(1, trimmedValue.length - 1);
+
+                // Zkontrolovat, jestli výraz obsahuje další parametry
+                if (!/R\d+/.test(expr)) {
+                    // Jednoduchý matematický výraz - vyhodnotit přímo
+                    const result = eval(expr);
+                    if (typeof result === 'number' && !isNaN(result)) {
+                        console.log(`Vyhodnocen přímý výraz ${trimmedValue} = ${result}`);
+                        this.setParameter(paramNum, result, lineNumber);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn(`Nelze přímo vyhodnotit výraz v závorkách: ${trimmedValue}`);
+            }
+        }
+
+        // Matematický výraz s parametry - uložíme jako výraz a vyhodnotíme později
+        console.log(`Ukládám výraz pro R${paramNum}: ${trimmedValue}`);
+        this.setParameter(paramNum, `EXPRESSION: ${trimmedValue}`, lineNumber);
+        this.expressions.set(paramNum, trimmedValue);
+
+        // Extrahovat použité parametry a jejich hodnoty
+        const usedParams = trimmedValue.match(/R\d+/g);
+        if (usedParams) {
+            const dependencies = {};
+            let missingDependency = false;
+
+            for (const param of usedParams) {
+                const depParamNum = parseInt(param.substring(1), 10);
+
+                // Zjistit hodnotu parametru z aktuální tabulky parametrů
+                if (this.parameters.has(depParamNum)) {
+                    const paramValue = this.parameters.get(depParamNum);
+
+                    // Uložit pouze numerické hodnoty nebo výsledky vyhodnocených výrazů
+                    if (typeof paramValue === 'number') {
+                        dependencies[depParamNum] = paramValue;
+                    } else if (typeof paramValue === 'string' && !paramValue.startsWith('EXPRESSION:')) {
+                        // Převést na číslo, pokud je to možné
+                        const numValue = parseFloat(paramValue);
+                        if (!isNaN(numValue)) {
+                            dependencies[depParamNum] = numValue;
+                        } else {
+                            console.log(`Nelze převést hodnotu parametru R${depParamNum} na číslo: ${paramValue}`);
+                        }
+                    } else {
+                        console.log(`Parametr R${depParamNum} obsahuje nevyhodnocený výraz`);
+                        missingDependency = true;
+                    }
+                } else {
+                    console.log(`Parametr R${depParamNum} ještě není definován`);
+                    missingDependency = true;
+                }
+            }
+
+            // Uložit závislosti parametru
+            if (Object.keys(dependencies).length > 0) {
+                this.setParameterDependencies(paramNum, dependencies, lineNumber);
+            }
+
+            // Pokud máme všechny potřebné hodnoty, můžeme zkusit vyhodnotit výraz
+            if (!missingDependency) {
+                try {
+                    const result = this.evaluateSimpleExpression(trimmedValue, dependencies);
+                    if (result !== null) {
+                        console.log(`Výraz pro parametr R${paramNum} byl vyhodnocen okamžitě: ${result}`);
+                        this.setParameter(paramNum, result, lineNumber);
+                    }
+                } catch (e) {
+                    console.warn(`Nelze vyhodnotit výraz pro R${paramNum}: ${e.message}`);
+                }
+            }
+        }
+    }
+
+    /**
+     * Vyhodnotí matematické výrazy parametrů
+     * Podporuje výpočty mezi parametry (R1=R2+R3, R4=R5*2, atd.)
+     */
+    evaluateExpressions() {
+        // Inicializovat objekt s hodnotami parametrů
+        const paramValues = {};
+
+        // Nejprve načteme všechny známé hodnoty parametrů
+        for (const [paramNum, value] of this.parameters.entries()) {
+            if (typeof value === 'number') {
+                paramValues[paramNum] = value;
+            } else if (typeof value === 'string' && !value.startsWith('FLOW:') && !value.startsWith('EXPRESSION:')) {
+                // Zkusit převést na číslo
+                const numVal = parseFloat(value);
+                if (!isNaN(numVal)) {
+                    paramValues[paramNum] = numVal;
+                    this.parameters.set(paramNum, numVal);
+                }
+            }
+        }
+
+        console.log("Hodnoty parametrů před vyhodnocením:", paramValues);
+
+        // Najít nevyhodnocené výrazy
+        const pendingExpressions = [];
+        for (const [paramNum, value] of this.parameters.entries()) {
+            if (typeof value === 'string' && value.startsWith('EXPRESSION:')) {
+                const expr = value.substring(11);
+                pendingExpressions.push({
+                    paramNum,
+                    expression: expr,
+                    dependencies: this.getParameterHistory(paramNum)[0]?.dependencies || {}
+                });
+            }
+        }
+
+        if (pendingExpressions.length === 0) {
+            console.log("Žádné výrazy k vyhodnocení");
+            return;
+        }
+
+        console.log(`Nalezeno ${pendingExpressions.length} nevyhodnocených výrazů`);
+
+        // Maximální počet iterací pro zabránění nekonečné smyčce
+        const maxIterations = 10;
+        let iterationCount = 0;
+        let madeProgress = true;
+
+        // Opakovat, dokud se daří vyhodnocovat výrazy nebo dokud nedosáhneme limitu iterací
+        while (madeProgress && pendingExpressions.length > 0 && iterationCount < maxIterations) {
+            iterationCount++;
+            madeProgress = false;
+
+            console.log(`Iterace ${iterationCount}: Zbývá ${pendingExpressions.length} výrazů k vyhodnocení`);
+
+            // Pole pro výrazy, které se nepodařilo vyhodnotit v této iteraci
+            const remainingExpressions = [];
+
+            // Zkusit vyhodnotit každý zbývající výraz
+            for (const item of pendingExpressions) {
+                const { paramNum, expression } = item;
+
+                try {
+                    // Vyhodnotit výraz s aktuálními hodnotami parametrů
+                    console.log(`Vyhodnocuji výraz pro R${paramNum}: ${expression}`);
+                    const result = this.evaluateExpressionWithContext(expression, paramValues);
+
+                    if (result !== null) {
+                        // Výraz se podařilo vyhodnotit
+                        console.log(`Parametr R${paramNum} vyhodnocen: ${result}`);
+                        this.parameters.set(paramNum, result);
+                        paramValues[paramNum] = result;
+                        madeProgress = true;
+                    } else {
+                        // Výraz se nepodařilo vyhodnotit, zkusíme v další iteraci
+                        remainingExpressions.push(item);
+                    }
+                } catch (e) {
+                    console.warn(`Chyba při vyhodnocení výrazu pro R${paramNum}: ${e.message}`);
+                    remainingExpressions.push(item);
+                }
+            }
+
+            // Aktualizovat seznam nevyhodnocených výrazů
+            pendingExpressions.length = 0;
+            pendingExpressions.push(...remainingExpressions);
+
+            console.log(`Dokončena iterace ${iterationCount}, vyřešeno ${madeProgress ? "několik" : "0"} výrazů`);
+        }
+
+        // Informace o výsledku
+        if (pendingExpressions.length === 0) {
+            console.log(`Všechny výrazy byly úspěšně vyhodnoceny`);
+        } else {
+            console.warn(`Nepodařilo se vyhodnotit ${pendingExpressions.length} výrazů:`);
+            for (const item of pendingExpressions) {
+                console.warn(`  R${item.paramNum} = ${item.expression}`);
+            }
+        }
+    }
+
+    /**
+     * Vyhodnotí výraz s použitím kontextu hodnot parametrů
+     * @param {string} expression - výraz k vyhodnocení
+     * @param {Object} context - objekt s hodnotami parametrů
+     * @returns {number|null} - vyhodnocená hodnota nebo null při chybě
+     */
+    evaluateExpressionWithContext(expression, context) {
+        // Najít všechny parametry R ve výrazu
+        const rParams = expression.match(/R\d+/g);
+        if (!rParams) {
+            // Výraz neobsahuje parametry, můžeme ho přímo vyhodnotit
+            try {
+                return eval(expression);
+            } catch (e) {
+                console.warn(`Chyba při vyhodnocení výrazu bez parametrů: ${expression}`);
+                return null;
+            }
+        }
+
+        // Zkontrolovat, zda máme všechny potřebné parametry
+        for (const param of rParams) {
+            const paramNum = parseInt(param.substring(1), 10);
+            if (context[paramNum] === undefined) {
+                console.log(`Pro výraz ${expression} chybí parametr ${param}`);
+                return null;
+            }
+        }
+
+        // Nahradit parametry hodnotami
+        let jsExpression = expression;
+        for (const param of rParams) {
+            const paramNum = parseInt(param.substring(1), 10);
+            jsExpression = jsExpression.replace(
+                new RegExp(`\\b${param}\\b`, 'g'),
+                context[paramNum]
+            );
+        }
+
+        // Vyhodnotit výraz
+        try {
+            console.log(`Upravený výraz k vyhodnocení: ${jsExpression}`);
+            const result = eval(jsExpression);
+            if (typeof result === 'number' && !isNaN(result)) {
+                return result;
+            }
+            return null;
+        } catch (e) {
+            console.warn(`Chyba při vyhodnocení výrazu ${jsExpression}: ${e.message}`);
+            return null;
+        }
     }
 
     /**
@@ -220,6 +469,348 @@ class CNCParametersManager {
     }
 
     /**
+     * Vyhodnotí výraz s podporou všech závislostí
+     * @param {string} expression - Výraz k vyhodnocení
+     * @param {number} paramNum - Číslo parametru, pro který se vyhodnocuje výraz
+     * @param {Object} currentValues - Aktuální hodnoty všech parametrů
+     * @returns {number|null} - Vyhodnocená hodnota nebo null při chybě
+     */
+    evaluateExpressionWithDependencies(expression, paramNum, currentValues) {
+        try {
+            // Získat historii parametru
+            const history = this.getParameterHistory(paramNum);
+            const firstDefinition = history && history.length > 0 ? history[0] : null;
+
+            if (!firstDefinition) {
+                return null;
+            }
+
+            // Kombinovat aktuální hodnoty s hodnotami ze závislostí
+            const evaluationContext = {...currentValues};
+
+            // Použít hodnoty závislostí, pokud existují (mají přednost před aktuálními hodnotami)
+            if (firstDefinition.dependencies) {
+                for (const [depNum, depValue] of Object.entries(firstDefinition.dependencies)) {
+                    if (typeof depValue === 'number') {
+                        evaluationContext[depNum] = depValue;
+                    }
+                }
+            }
+
+            // OPRAVA: Upravit rekurzivní vyhodnocování
+            // Zjistit, zda máme všechny potřebné parametry
+            const rParams = expression.match(/R\d+/g);
+            if (rParams) {
+                const missingParams = [];
+                const recursiveParams = new Set(); // Pro sledování rekurzivních závislostí
+
+                // DŮLEŽITÁ ZMĚNA: Vytvořit mapu řádků, kde byly parametry definovány
+                const paramLineNumbers = new Map();
+
+                // Naplnit mapu řádků z historie parametrů
+                for (const [histParamNum, histEntries] of this.paramHistory.entries()) {
+                    if (histEntries && histEntries.length > 0) {
+                        paramLineNumbers.set(parseInt(histParamNum, 10), histEntries[0].line);
+                    }
+                }
+
+                // První průchod - detekujeme chybějící parametry a rekurzivní závislosti
+                for (const param of rParams) {
+                    const paramNumber = parseInt(param.substring(1), 10);
+
+                    // Kontrola rekurzivních závislostí (parametr odkazuje sám na sebe)
+                    if (paramNumber === paramNum) {
+                        recursiveParams.add(paramNumber);
+                        continue;
+                    }
+
+                    // KLÍČOVÁ ZMĚNA: Parametry na stejném řádku jsou VŽDY dostupné
+                    // bez ohledu na pořadí jejich vyhodnocení
+                    if (paramLineNumbers.has(paramNumber) && paramLineNumbers.has(paramNum)) {
+                        const paramLine = paramLineNumbers.get(paramNumber);
+                        const currentParamLine = paramLineNumbers.get(paramNum);
+
+                        // Pokud je parametr definován na pozdějším řádku než aktuální parametr, nemůžeme ho použít
+                        if (paramLine > currentParamLine) {
+                            console.warn(`Parametr R${paramNumber} je definován na řádku ${paramLine}, ale R${paramNum} je definován na řádku ${currentParamLine}.`);
+                            console.warn(`Nelze použít parametr, který je definován později v programu.`);
+                            missingParams.push(param);
+                            continue;
+                        }
+                        // DŮLEŽITÁ ZMĚNA: Všechny parametry na stejném řádku jsou považovány za dostupné
+                        else if (paramLine === currentParamLine) {
+                            console.log(`Parametr R${paramNumber} je definován na stejném řádku ${paramLine} jako R${paramNum}. Používám jeho aktuální hodnotu.`);
+
+                            // Pro parametry na stejném řádku zkusíme najít hodnotu:
+                            // 1. Z evaluationContext (přednostně)
+                            // 2. Z currentValues
+                            // 3. Z parametrů v paměti this.parameters
+
+                            if (evaluationContext[paramNumber] !== undefined) {
+                                console.log(`Parametr R${paramNumber} je dostupný v evaluationContext: ${evaluationContext[paramNumber]}`);
+                                continue;  // Parametr má hodnotu, pokračujeme
+                            } else if (currentValues[paramNumber] !== undefined) {
+                                evaluationContext[paramNumber] = currentValues[paramNumber];
+                                console.log(`Parametr R${paramNumber} použijeme z currentValues: ${currentValues[paramNumber]}`);
+                                continue;
+                            } else if (this.parameters.has(paramNumber)) {
+                                evaluationContext[paramNumber] = this.parameters.get(paramNumber);
+                                console.log(`Parametr R${paramNumber} použijeme z this.parameters: ${this.parameters.get(paramNumber)}`);
+                                continue;
+                            } else {
+                                // Pokud parametr nemá žádnou hodnotu, zkusíme pro něj spočítat výchozí hodnotu
+                                // Pro účely výpočtu na stejném řádku použijeme výchozí hodnotu 0
+                                console.log(`Parametr R${paramNumber} nemá známou hodnotu, použijeme výchozí hodnotu 0`);
+                                evaluationContext[paramNumber] = 0;
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (evaluationContext[paramNumber] === undefined) {
+                        // OPRAVA: Vylepšený algoritmus pro vyhledávání hodnoty parametru
+                        // Nejprve zkontrolujeme, zda je parametr v závislosti aktuálního parametru
+                        if (firstDefinition.dependencies && firstDefinition.dependencies[paramNumber] !== undefined) {
+                            evaluationContext[paramNumber] = firstDefinition.dependencies[paramNumber];
+                            continue;
+                        }
+
+                        // Zkontrolovat historii změn parametru
+                        const depHistory = this.getParameterHistory(paramNumber);
+                        if (depHistory && depHistory.length > 0) {
+                            // KLÍČOVÁ ZMĚNA: Najít poslední změnu před definicí aktuálního parametru
+                            // Pouze řádky před aktuálním řádkem
+                            const validEntries = depHistory.filter(entry => entry.line < firstDefinition.line);
+
+                            if (validEntries.length > 0) {
+                                const lastValidEntry = validEntries[validEntries.length - 1];
+                                if (typeof lastValidEntry.value === 'number') {
+                                    evaluationContext[paramNumber] = lastValidEntry.value;
+                                    console.log(`Nalezena hodnota parametru R${paramNumber} = ${lastValidEntry.value} z řádku ${lastValidEntry.line} (před R${paramNum} na řádku ${firstDefinition.line})`);
+                                    continue;
+                                } else if (typeof lastValidEntry.value === 'string' && lastValidEntry.value.startsWith('EXPRESSION:')) {
+                                    // Zkusit vyhodnotit výraz
+                                    const depExpr = lastValidEntry.value.substring(11);
+                                    try {
+                                        // Pokud hodnota z historie je výraz, vyhodnotit rekurzivně
+                                        if (lastValidEntry.line < firstDefinition.line) { // Pouze předchozí řádky
+                                            const result = this.evaluateSimpleExpressionWithHistory(depExpr, paramNumber, lastValidEntry.line, currentValues);
+                                            if (result !== null) {
+                                                evaluationContext[paramNumber] = result;
+                                                console.log(`Vyhodnocen výraz pro R${paramNumber} = ${result} z řádku ${lastValidEntry.line}`);
+                                                continue;
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn(`Chyba při vyhodnocení výrazu pro R${paramNumber}: ${e.message}`);
+                                    }
+                                }
+                            } else {
+                                console.warn(`Nenalezena žádná validní definice pro R${paramNumber} před řádkem ${firstDefinition.line}`);
+                            }
+                        }
+
+                        // Pokud parametr není v závislosti ani v historii, zkusit, zda ho nemáme v aktuálních hodnotách
+                        if (currentValues[paramNumber] !== undefined) {
+                            // DŮLEŽITÉ: Kontrolovat, zda tento parametr není definován později v programu
+                            if (paramLineNumbers.has(paramNumber) &&
+                                paramLineNumbers.has(paramNum) &&
+                                paramLineNumbers.get(paramNumber) <= paramLineNumbers.get(paramNum)) {
+
+                                evaluationContext[paramNumber] = currentValues[paramNumber];
+                                continue;
+                            }
+                        }
+
+                        // Pokud se parametr nepodařilo vyhodnotit, přidáme ho do seznamu chybějících
+                        missingParams.push(param);
+                    }
+                }
+
+                // Řešení rekurzivních závislostí - vzít aktuální hodnotu, pokud existuje
+                recursiveParams.forEach(paramNumber => {
+                    // OPRAVA: Vylepšené hledání hodnoty rekurzivní závislosti
+                    const history = this.getParameterHistory(paramNumber);
+                    let foundValue = false;
+
+                    // Zkusit najít nejnovější známou hodnotu z historie
+                    if (history && history.length > 1) {
+                        // Najít všechny záznamy před aktuálním řádkem
+                        const prevEntries = history.filter(entry => entry.line < firstDefinition.line);
+
+                        if (prevEntries.length > 0) {
+                            // Vzít poslední záznam před aktuálním
+                            const previousEntry = prevEntries[prevEntries.length - 1];
+
+                            if (typeof previousEntry.value === 'number') {
+                                evaluationContext[paramNumber] = previousEntry.value;
+                                console.log(`Pro rekurzivní parametr R${paramNumber} použita předchozí hodnota: ${previousEntry.value} z řádku ${previousEntry.line}`);
+                                foundValue = true;
+                            }
+                        }
+                    }
+
+                    // Pokud nemáme předchozí hodnotu, zkusit vzít aktuální hodnotu
+                    if (!foundValue) {
+                        const currentValue = this.parameters.get(paramNumber);
+                        if (typeof currentValue === 'number') {
+                            evaluationContext[paramNumber] = currentValue;
+                            console.log(`Použita aktuální hodnota pro rekurzivní parametr R${paramNumber}: ${currentValue}`);
+                        } else {
+                            // Pokud nemá hodnotu, použijeme 0 jako výchozí hodnotu
+                            evaluationContext[paramNumber] = 0;
+                            console.log(`Pro rekurzivní parametr R${paramNumber} není hodnota, použijeme 0`);
+                        }
+                    }
+                });
+
+                // Druhý průchod - kontrolujeme, zda stále chybí nějaké parametry
+                const stillMissingParams = missingParams.filter(param => {
+                    const paramNumber = parseInt(param.substring(1), 10);
+                    return evaluationContext[paramNumber] === undefined;
+                });
+
+                if (stillMissingParams.length > 0) {
+                    console.log(`Nelze vyhodnotit R${paramNum} = ${expression}, chybí parametry: ${stillMissingParams.join(', ')}`);
+                    return null;
+                }
+            }
+
+            // Nahradit parametry hodnotami a vyhodnotit výraz
+            let jsExpression = expression;
+
+            if (rParams) {
+                for (const param of rParams) {
+                    const paramNumber = parseInt(param.substring(1), 10);
+                    const value = evaluationContext[paramNumber];
+
+                    if (value !== undefined) {
+                        jsExpression = jsExpression.replace(
+                            new RegExp(`\\b${param}\\b`, 'g'),
+                            value
+                        );
+                    }
+                }
+            }
+
+            console.log(`Vyhodnocuji výraz: ${jsExpression}`);
+
+            // Řešení výrazů v závorkách typu (409+0)
+            if (jsExpression.includes('(') && jsExpression.includes(')')) {
+                try {
+                    // Zpracovat matematický výraz v závorkách
+                    const result = eval(jsExpression);
+                    if (typeof result === 'number' && !isNaN(result)) {
+                        console.log(`Výraz v závorkách vyhodnocen: ${result}`);
+                        return result;
+                    }
+                } catch (e) {
+                    console.warn(`Nelze vyhodnotit výraz v závorkách ${jsExpression}: ${e.message}`);
+                }
+            }
+
+            // Provést výpočet standardním způsobem
+            const result = new Function('return ' + jsExpression)();
+
+            if (typeof result === 'number' && !isNaN(result)) {
+                return result;
+            }
+
+            return null;
+        } catch (e) {
+            console.warn(`Chyba při vyhodnocení výrazu ${expression} pro R${paramNum}: ${e.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Vyhodnotí jednoduchý výraz pouze s použitím historie parametrů před daným řádkem
+     * @param {string} expression - Výraz k vyhodnocení
+     * @param {number} paramNum - Číslo parametru
+     * @param {number} lineNum - Číslo řádku definice parametru
+     * @param {Object} currentValues - Aktuální hodnoty parametrů
+     * @returns {number|null} - Výsledek výrazu nebo null při chybě
+     */
+    evaluateSimpleExpressionWithHistory(expression, paramNum, lineNum, currentValues) {
+        try {
+            // Získat hodnoty parametrů z historie před daným řádkem
+            const evalParams = {};
+            const rParams = expression.match(/R\d+/g);
+
+            if (!rParams) {
+                // Výraz bez parametrů, přímé vyhodnocení
+                return this.evaluateSimpleExpression(expression, {});
+            }
+
+            // Pro každý parametr v expression najít hodnotu z historie
+            for (const param of rParams) {
+                const paramNumber = parseInt(param.substring(1), 10);
+
+                // Rekurzivní závislost - parametr odkazuje sám na sebe
+                if (paramNumber === paramNum) {
+                    const history = this.getParameterHistory(paramNumber);
+                    if (history && history.length > 1) {
+                        // Najít předcházející definici
+                        const prevEntries = history.filter(entry => entry.line < lineNum);
+                        if (prevEntries.length > 0) {
+                            const prevEntry = prevEntries[prevEntries.length - 1];
+                            if (typeof prevEntry.value === 'number') {
+                                evalParams[paramNumber] = prevEntry.value;
+                                continue;
+                            }
+                        }
+                    }
+                    // Pokud nenajdeme předchozí hodnotu, použijeme 0
+                    evalParams[paramNumber] = 0;
+                    continue;
+                }
+
+                // Získat historii parametru
+                const history = this.getParameterHistory(paramNumber);
+                if (history && history.length > 0) {
+                    // Najít poslední definici před lineNum
+                    const prevEntries = history.filter(entry => entry.line < lineNum);
+                    if (prevEntries.length > 0) {
+                        const lastEntry = prevEntries[prevEntries.length - 1];
+                        if (typeof lastEntry.value === 'number') {
+                            evalParams[paramNumber] = lastEntry.value;
+                        } else if (typeof lastEntry.value === 'string' && lastEntry.value.startsWith('EXPRESSION:')) {
+                            // Rekurzivní vyhodnocení parametru
+                            const subExpr = lastEntry.value.substring(11);
+                            const result = this.evaluateSimpleExpressionWithHistory(subExpr, paramNumber, lastEntry.line, currentValues);
+                            if (result !== null) {
+                                evalParams[paramNumber] = result;
+                            } else {
+                                return null; // Nelze vyhodnotit podvýraz
+                            }
+                        } else {
+                            // Jiný typ hodnoty, zkusit využít
+                            evalParams[paramNumber] = currentValues[paramNumber];
+                        }
+                    } else {
+                        // Nenalezena žádná definice před daným řádkem
+                        console.warn(`Parametr R${paramNumber} není definován před řádkem ${lineNum}`);
+                        return null;
+                    }
+                } else if (currentValues[paramNumber] !== undefined) {
+                    // Pokud nemáme historii, zkusit aktuální hodnotu
+                    evalParams[paramNumber] = currentValues[paramNumber];
+                } else {
+                    // Parametr není definován
+                    console.warn(`Parametr R${paramNumber} není definován`);
+                    return null;
+                }
+            }
+
+            // Vyhodnotit výraz s hodnotami z historie
+            return this.evaluateSimpleExpression(expression, evalParams);
+        } catch (e) {
+            console.warn(`Chyba při vyhodnocení výrazu s historií: ${e.message}`);
+            return null;
+        }
+    }
+
+    /**
      * Vyhodnotí matematické výrazy parametrů s podporou postupných změn
      * Podporuje výpočty mezi parametry (R1=R2+R3, R4=R5*2, atd.)
      */
@@ -227,7 +818,6 @@ class CNCParametersManager {
         // Před použitím běžné metody, zkusit vyhodnotit pomocí knihovny Sinumerik math
         const paramValues = {};
         const undefinedParams = new Set();
-        const paramDefinitionOrder = []; // Nové pole pro sledování pořadí definic
 
         // Nejprve načteme všechny již známé hodnoty parametrů - ale jen ty, které jsou skutečně čísla
         for (const [paramNum, value] of this.parameters.entries()) {
@@ -244,6 +834,9 @@ class CNCParametersManager {
         }
 
         console.log("Počáteční hodnoty parametrů:", JSON.stringify(paramValues));
+
+        // VYLEPŠENÍ: Nejprve vyhodnotíme všechny výrazy v závorkách typu (409+0), (462.2-40)
+        this.evaluateBracketExpressions(paramValues);
 
         // Nejprve sestavíme pole parametrů v pořadí, v jakém jsou definovány v kódu
         const paramOrderMap = new Map(); // Mapa pro pamatování řádku, kde byl parametr poprvé definován
@@ -264,9 +857,8 @@ class CNCParametersManager {
 
         console.log("Pořadí vyhodnocení parametrů podle definice v kódu:", sortedParams);
 
-        // Postupně vyhodnocovat parametry v pořadí, v jakém jsou definovány v kódu
+        // VYLEPŠENÍ: První průchod zpracuje jen parametry s přímou hodnotou nebo výrazy bez závislostí
         for (const paramNum of sortedParams) {
-            // Pokud má parametr výraz, pokusit se ho vyhodnotit
             if (this.expressions.has(paramNum)) {
                 const expression = this.expressions.get(paramNum);
 
@@ -279,42 +871,43 @@ class CNCParametersManager {
                 const expressionToEval = typeof expression === 'string' && expression.startsWith('EXPRESSION:') ?
                     expression.substring(11) : expression;
 
-                console.log(`Vyhodnocování parametru R${paramNum} = ${expressionToEval}`);
-                console.log(`Dostupné hodnoty:`, paramValues);
+                // Detekujeme, zda výraz obsahuje nějaké parametry R
+                const containsRParams = /R\d+/.test(expressionToEval);
 
-                try {
-                    // Zkusit vyhodnotit výraz s aktuálně dostupnými parametry
-                    const result = this.evaluateExpressionWithDependencies(expressionToEval, paramNum, paramValues);
-
-                    if (result !== null) {
-                        console.log(`Parametr R${paramNum} vyhodnocen: ${result}`);
-                        this.parameters.set(paramNum, result);
-                        paramValues[paramNum] = result; // Aktualizovat pro další výrazy
-                    } else {
-                        console.log(`Parametr R${paramNum} nelze vyhodnotit, chybí některé závislosti`);
+                // Pro výrazy bez parametrů R nebo s výrazy v závorkách, vyhodnotit ihned
+                if (!containsRParams || (expressionToEval.includes('(') && expressionToEval.includes(')'))) {
+                    try {
+                        const result = this.evaluateSimpleExpression(expressionToEval, paramValues);
+                        if (result !== null) {
+                            console.log(`Parametr R${paramNum} vyhodnocen v prvním průchodu: ${result}`);
+                            this.parameters.set(paramNum, result);
+                            paramValues[paramNum] = result;
+                        }
+                    } catch (e) {
+                        // Ignorovat chyby v této fázi
                     }
-                } catch (e) {
-                    console.warn(`Chyba při vyhodnocení výrazu pro R${paramNum}: ${e.message}`);
                 }
             }
         }
 
-        // Pokusit se ještě jednou vyhodnotit výrazy, které nevyšly v prvním průchodu
+        // Postupně vyhodnocovat parametry v pořadí, v jakém jsou definovány v kódu
+        let totalIterations = 0; // Celkový počet iterací
+        const MAX_TOTAL_ITERATIONS = 10; // Maximální celkový počet iterací
+
+        // HLAVNÍ CYKLUS: Opakovaně procházet všechny parametry, dokud se něco mění
         let changed = true;
-        let iterations = 0;
-        const MAX_ITERATIONS = 5; // Omezit počet iterací
-
-        while (changed && iterations < MAX_ITERATIONS) {
-            iterations++;
+        while (changed && totalIterations < MAX_TOTAL_ITERATIONS) {
             changed = false;
+            totalIterations++;
 
+            // Procházíme parametry v pořadí definice
             for (const paramNum of sortedParams) {
-                // Přeskočit parametry, které již mají číselnou hodnotu
+                // Pokud parametr již má číselnou hodnotu, přeskočíme ho
                 if (typeof this.parameters.get(paramNum) === 'number') {
                     continue;
                 }
 
-                // Pokud má parametr výraz, pokusit se ho vyhodnotit znovu
+                // Pokud má parametr výraz, pokusit se ho vyhodnotit
                 if (this.expressions.has(paramNum)) {
                     const expression = this.expressions.get(paramNum);
 
@@ -327,23 +920,87 @@ class CNCParametersManager {
                     const expressionToEval = typeof expression === 'string' && expression.startsWith('EXPRESSION:') ?
                         expression.substring(11) : expression;
 
+                    console.log(`Iterace ${totalIterations}: Vyhodnocuji parametr R${paramNum} = ${expressionToEval}`);
+
                     try {
+                        // VYLEPŠENO: Použití nové metody pro vyhodnocení s podporou závislostí
                         const result = this.evaluateExpressionWithDependencies(expressionToEval, paramNum, paramValues);
 
                         if (result !== null) {
-                            console.log(`V iteraci ${iterations}: R${paramNum} = ${result}`);
+                            console.log(`Iterace ${totalIterations}: Parametr R${paramNum} vyhodnocen: ${result}`);
                             this.parameters.set(paramNum, result);
                             paramValues[paramNum] = result;
                             changed = true;
                         }
                     } catch (e) {
-                        // Ignorovat chyby v této fázi
+                        console.warn(`Chyba při vyhodnocení výrazu pro R${paramNum}: ${e.message}`);
                     }
                 }
             }
+
+            console.log(`Dokončena iterace ${totalIterations}, změněné parametry: ${changed}`);
         }
 
-        console.log(`Vyhodnocení dokončeno po ${iterations} dodatečných iteracích`);
+        console.log(`Vyhodnocení dokončeno po ${totalIterations} iteracích`);
+
+        // Výpis nevyřešených parametrů
+        const unresolved = [];
+        for (const [paramNum, value] of this.parameters.entries()) {
+            if (typeof value === 'string' && (value.startsWith('EXPRESSION:') || /R\d+/.test(value))) {
+                unresolved.push(`R${paramNum} = ${value}`);
+            }
+        }
+
+        if (unresolved.length > 0) {
+            console.warn(`Nevyřešené parametry: ${unresolved.join(', ')}`);
+        }
+    }
+
+    /**
+     * Vyhodnotí výrazy v závorkách jako (409+0), (462.2-40)
+     * @param {Object} paramValues - Aktuální hodnoty parametrů
+     */
+    evaluateBracketExpressions(paramValues) {
+        for (const [paramNum, value] of this.parameters.entries()) {
+            // Hledáme řetězce typu "(číslo+číslo)" nebo "(číslo-číslo)"
+            if (typeof value === 'string' && value.startsWith('(') && value.endsWith(')')) {
+                try {
+                    // Pokusit se vyhodnotit výraz v závorkách
+                    const jsExpression = value.substring(1, value.length - 1);
+
+                    // Zkontrolovat, zda výraz neobsahuje parametry R
+                    if (!/R\d+/.test(jsExpression)) {
+                        const result = eval(jsExpression);
+                        if (typeof result === 'number' && !isNaN(result)) {
+                            console.log(`Vyhodnocen výraz v závorkách pro R${paramNum}: ${value} => ${result}`);
+                            this.parameters.set(paramNum, result);
+                            paramValues[paramNum] = result;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Nelze vyhodnotit výraz v závorkách pro R${paramNum}: ${value}`);
+                }
+            }
+
+            // Případy, kdy máme stringový výraz s hodnotou např. "EXPRESSION: (409+0)"
+            if (typeof value === 'string' && value.startsWith('EXPRESSION: (') && value.endsWith(')')) {
+                try {
+                    const jsExpression = value.substring(12, value.length - 1);
+
+                    // Zkontrolovat, zda výraz neobsahuje parametry R
+                    if (!/R\d+/.test(jsExpression)) {
+                        const result = eval(jsExpression);
+                        if (typeof result === 'number' && !isNaN(result)) {
+                            console.log(`Vyhodnocen výraz EXPRESSION v závorkách pro R${paramNum}: ${value} => ${result}`);
+                            this.parameters.set(paramNum, result);
+                            paramValues[paramNum] = result;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Nelze vyhodnotit EXPRESSION v závorkách pro R${paramNum}: ${value}`);
+                }
+            }
+        }
     }
 
     /**
@@ -433,7 +1090,7 @@ class CNCParametersManager {
         this.paramHistory.get(key).push({
             value,
             line,
-            timestamp: Date.now()
+            timestamp: Date.now() // Důležité: obsahuje timestamp pro určení pořadí definice na stejném řádku
         });
 
         // Nastavit aktuální hodnotu

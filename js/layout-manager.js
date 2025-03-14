@@ -49,6 +49,28 @@ function initializeLayoutReferences() {
     leftPanel = document.getElementById('leftPanel');
     rightPanel = document.getElementById('rightPanel');
     topPanel = document.getElementById('topPanel');
+
+    // Vytvořit a přidat nový resize handle
+    createResizeHandle();
+}
+
+/**
+ * Vytvoří a přidá nový prvek pro změnu velikosti pod prostředním panelem
+ */
+function createResizeHandle() {
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    resizeHandle.id = 'resizeHandle';
+
+    // Přidat do dokumentu před bottomEditor
+    const bottomEditor = document.getElementById('bottomEditor');
+    if (bottomEditor && bottomEditor.parentNode) {
+        bottomEditor.parentNode.insertBefore(resizeHandle, bottomEditor);
+    }
+
+    // Přidat event listenery pro ovládání velikosti
+    resizeHandle.addEventListener('mousedown', handleMouseDown);
+    resizeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
 }
 
 /**
